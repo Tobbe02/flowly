@@ -58,6 +58,14 @@ def eval_expr(obj, expr):
         return eval_func(obj)
 
 
+class eval_(object):
+    def __init__(self, expr):
+        self.expr = expr
+
+    def __call__(self, obj):
+        return eval_expr(obj, self.expr)
+
+
 class expr(flowly_base):
     def __init__(self):
         pass
