@@ -299,8 +299,15 @@ class this_impl(expr):
 this = this_impl()
 
 
+def create_callable_pipe(*args):
+    return callable_pipe(args)
+
+
 def pipe(obj=_unset):
     return bound_pipe(obj) if obj is not _unset else unbound_pipe()
+
+
+pipe.func = create_callable_pipe
 
 
 class bound_pipe(object):
@@ -323,6 +330,10 @@ class unbound_pipe(flowly_base):
     def __or__(self, transform):
         return unbound_pipe(self.transforms + [transform])
 
+    def _flowly_items_(self):
+        return list(enumerate(self.transforms))
+
+
     def _flowly_eval_(self, obj):
         current = bound_pipe(obj)
 
@@ -331,8 +342,58 @@ class unbound_pipe(flowly_base):
 
         return +current
 
+
+class callable_pipe(flowly_base):
+    def __init__(self, args, transforms=()):
+        self.args = args
+        self.transforms = list(transforms)
+
+    def __or__(self, transform):
+        return callable_pipe(self.args, self.transforms + [transform])
+
     def _flowly_items_(self):
         return list(enumerate(self.transforms))
+
+    def __call__(self, *args, **kwargs):
+        current = bound_pipe(build_argument(self.args, args, kwargs))
+
+        for transform in self.transforms:
+            current = current | transform
+
+        return +current
+
+
+def build_argument(argspec, args, kwargs):
+    named_args = dict(zip(argspec, args))
+    for name, arg in kwargs.items():
+        if name in named_args:
+            raise TypeError("keyword argument {} specified multiple times".format(name))
+
+        named_args[name] = arg
+
+    missing_args = set(argspec) - set(named_args)
+    if missing_args:
+        raise TypeError("missing arguments {}".format(missing_args))
+
+    result = argument(args[len(argspec):])
+    for name, value in named_args.items():
+        setattr(result, name, value)
+
+    return result
+
+
+class argument(object):
+    def __init__(self, args):
+        self.__args = args
+
+    def __getitem__(self, idx):
+        return self.__args[idx]
+
+    def __len__(self):
+        return len(self.__args)
+
+    def __iter__(self):
+        return iter(self.__args)
 
 
 def pipe_eval(obj, expr):
