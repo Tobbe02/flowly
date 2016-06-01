@@ -103,7 +103,7 @@ class TestPipeFuncFor(unittest.TestCase):
         impl = (
             pipe.func("arg") |
             assign(result="odd") |
-            if_((this.arg % 2) == 0)( assign(result="even") ) |
+            if_((this.arg % 2) == 0).do( assign(result="even") ) |
             this.result
         )
 
@@ -117,7 +117,7 @@ class TestPipeFuncFor(unittest.TestCase):
 
         impl = (
             pipe.func("arg") |
-            if_(True)( assign(result="foo") ) |
+            if_(True).do( assign(result="foo") ) |
             this.result
         )
 
@@ -129,8 +129,8 @@ class TestPipeFuncFor(unittest.TestCase):
 
         impl = (
             pipe.func("arg") |
-            if_((this.arg % 2) == 0)( assign(result="even") )
-            .else_( assign(result="odd") ) |
+            if_((this.arg % 2) == 0).do( assign(result="even") )
+            .else_.do( assign(result="odd") ) |
             this.result
         )
 
@@ -144,9 +144,9 @@ class TestPipeFuncFor(unittest.TestCase):
 
         impl = (
             pipe.func("arg") |
-            if_(this.arg == 0)( assign(result="zero") )
-            .elif_(this.arg == 1)( assign(result="one") )
-            .else_( assign(result="number") ) |
+            if_(this.arg == 0).do( assign(result="zero") )
+            .elif_(this.arg == 1).do( assign(result="one") )
+            .else_.do( assign(result="number") ) |
             this.result
         )
 
@@ -160,10 +160,10 @@ class TestPipeFuncFor(unittest.TestCase):
 
         impl = (
             pipe.func("arg") |
-            if_(this.arg == 0)( assign(result="zero") )
-            .elif_(this.arg == 1)( assign(result="one") )
-            .elif_(this.arg == 2)( assign(result="two") )
-            .else_( assign(result="number") ) |
+            if_(this.arg == 0).do( assign(result="zero") )
+            .elif_(this.arg == 1).do( assign(result="one") )
+            .elif_(this.arg == 2).do( assign(result="two") )
+            .else_.do( assign(result="number") ) |
             this.result
         )
 
@@ -172,13 +172,29 @@ class TestPipeFuncFor(unittest.TestCase):
         self.assertEqual("two", impl(2))
         self.assertEqual("number", impl(3))
 
-    def test_try_catch(self):
-        from flowly.py import do_, try_, assign
+    def test_if_elif_elif_else_functional(self):
+        from flowly.py import assign, if_
 
         impl = (
             pipe.func("arg") |
-            try_(pipe() | do_(this.arg.items) | assign(result="has_items"))
-            .except_(AttributeError)(
+            if_(this.arg == 0)("zero")
+            .elif_(this.arg == 1)("one")
+            .elif_(this.arg == 2)("two")
+            .else_("number")
+        )
+
+        self.assertEqual("zero", impl(0))
+        self.assertEqual("one", impl(1))
+        self.assertEqual("two", impl(2))
+        self.assertEqual("number", impl(3))
+
+    def test_try_catch(self):
+        from flowly.py import do, try_, assign
+
+        impl = (
+            pipe.func("arg") |
+            try_.do(pipe() | do(this.arg.items) | assign(result="has_items"))
+            .except_(AttributeError).do(
                 assign(result="has_no_items")
             ) |
             this.result
@@ -187,26 +203,51 @@ class TestPipeFuncFor(unittest.TestCase):
         self.assertEqual("has_no_items", impl([]))
         self.assertEqual("has_items", impl({}))
 
-    def test_try_catch_else(self):
-        from flowly.py import do_, try_, assign
+    def test_try_catch_functional(self):
+        from flowly.py import do, try_, assign
 
         impl = (
             pipe.func("arg") |
-            try_(this.arg.items)
-            .except_(AttributeError)(assign(result="has_no_items"))
-            .else_(assign(result="has_items")) |
+            try_(pipe() | this.arg.items | lit("has_items"))
+            .except_(AttributeError)(lit("has_no_items"))
+        )
+
+        self.assertEqual("has_no_items", impl([]))
+        self.assertEqual("has_items", impl({}))
+
+    def test_try_catch_else(self):
+        from flowly.py import try_, assign
+
+        impl = (
+            pipe.func("arg") |
+            try_.do(this.arg.items)
+            .except_(AttributeError).do(assign(result="has_no_items"))
+            .else_.do(assign(result="has_items")) |
             this.result
         )
 
         self.assertEqual("has_no_items", impl([]))
         self.assertEqual("has_items", impl({}))
 
+    def test_try_catch_else_functional(self):
+        from flowly.py import try_, assign
+
+        impl = (
+            pipe.func("arg") |
+            try_.do(this.arg.items)
+            .except_(AttributeError)(lit("has_no_items"))
+            .else_(lit("has_items"))
+        )
+
+        self.assertEqual("has_items", impl({}))
+        self.assertEqual("has_no_items", impl([]))
+
     def test_try_finally(self):
         from flowly.py import try_, raise_, setitem
 
         impl = (
             pipe.func("arg") |
-            try_(raise_(RuntimeError()))
+            try_.do(raise_(RuntimeError()))
             .finally_(setitem(this.arg, "result", "foo"))
         )
 

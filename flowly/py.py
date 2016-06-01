@@ -17,6 +17,32 @@ chr = lit(builtins.chr)
 len = lit(builtins.len)
 ord = lit(builtins.ord)
 range = lit(builtins.range)
+all = lit(builtins.all)
+any = lit(builtins.any)
+
+
+def _as_tuple(*args):
+    return tuple(args)
+
+
+def _as_list(*args):
+    return list(args)
+
+
+as_tuple = lit(_as_tuple)
+as_list = lit(_as_list)
+
+
+def _and(*args):
+    return builtins.all(args)
+
+
+def _or(*args):
+    return builtins.any(args)
+
+
+and_ = lit(_and)
+or_ = lit(_or)
 
 
 class update(object):
@@ -40,11 +66,12 @@ class assign(object):
         return obj
 
 
-class do_(object):
+# TODO: remove suffix _
+class do(object):
     def __init__(self, expr):
         self.expr = expr
 
-    def __call__(self, obj):
+    def _flowly_eval_(self, obj):
         +(pipe(obj) | self.expr)
         return obj
 
@@ -58,7 +85,6 @@ class raise_(object):
         raise exc
 
 
-# TODO: implement for ... else
 def for_(name):
     return _for1(name)
 
@@ -79,6 +105,9 @@ class _for2(object):
     def __call__(self, body):
         return _for(self.name, self.iterable, body)
 
+    def do(self, body):
+        return self(do(body))
+
 
 class _for(object):
     def __init__(self, name, iterable, body):
@@ -92,7 +121,7 @@ class _for(object):
         # TODO: implement scoping?
         for item in iterable:
             builtins.setattr(obj, self.name, item)
-            +(pipe(obj) | self.body)
+            obj = +(pipe(obj) | self.body)
 
         return obj
 
@@ -104,6 +133,9 @@ class while_(object):
     def __call__(self, body):
         return _while(self.guard, body)
 
+    def do(self, body):
+        return self(do(body))
+
 
 class _while(object):
     def __init__(self, guard, body):
@@ -111,8 +143,8 @@ class _while(object):
         self.body = body
 
     def _flowly_eval_(self, obj):
-        while +(pipe(obj) | self.guard):
-            +(pipe(obj) | self.body)
+        while +(pipe(obj) | eval_(self.guard)):
+            obj = +(pipe(obj) | self.body)
 
         return obj
 
@@ -124,23 +156,31 @@ class if_(object):
     def __call__(self, body):
         return _if([(self.cond, body)])
 
+    def do(self, body):
+        return self(do(body))
+
+
+class _if_else_proxy(object):
+    def __init__(self, cond_body_pairs):
+        self.cond_body_pairs = cond_body_pairs
+
+    def __call__(self, body):
+        return _else(self.cond_body_pairs, body)
+
+    def do(self, body):
+        return self(do(body))
+
 
 class _if(object):
     def __init__(self, cond_body_pairs):
         self.cond_body_pairs = cond_body_pairs
+        self.else_ = _if_else_proxy(cond_body_pairs)
 
     def elif_(self, cond):
         return _elif1(self.cond_body_pairs, cond)
 
-    def else_(self, body):
-        return _else(self.cond_body_pairs, body)
-
     def _flowly_eval_(self, obj):
-        for cond, body in self.cond_body_pairs:
-            if +(pipe(obj) | eval_(cond)):
-                +(pipe(obj) | body)
-                break
-        return obj
+        return _if_else_impl(obj, self.cond_body_pairs, _unset)
 
 
 class _elif1(object):
@@ -151,6 +191,9 @@ class _elif1(object):
     def __call__(self, body):
         return _if(self.cond_body_pairs + [(self.cond, body)])
 
+    def do(self, body):
+        return self(do(body))
+
 
 class _else(object):
     def __init__(self, cond_body_pairs, body):
@@ -158,15 +201,21 @@ class _else(object):
         self.body = body
 
     def _flowly_eval_(self, obj):
-        for cond, body in self.cond_body_pairs:
-            if +(pipe(obj) | eval_(cond)):
-                +(pipe(obj) | body)
-                break
+        return _if_else_impl(obj, self.cond_body_pairs, self.body)
 
-        else:
-            +(pipe(obj) | self.body)
 
-        return obj
+def _if_else_impl(obj, cond_body_pairs, else_body):
+    result = obj
+    for cond, body in cond_body_pairs:
+        if +(pipe(obj) | eval_(cond)):
+            result = +(pipe(obj) | eval_(body))
+            break
+
+    else:
+        if else_body is not _unset:
+            result = +(pipe(obj) | eval_(else_body))
+
+    return result
 
 
 class try_(object):
@@ -180,6 +229,10 @@ class try_(object):
     def finally_(self, body):
         return _try_catch_finally(self.body, self.catch_pairs, body)
 
+    @classmethod
+    def do(cls, body):
+        return cls(do(body))
+
 
 class _try_catch1(object):
     def __init__(self, body, catch_pairs, exc_class):
@@ -190,17 +243,30 @@ class _try_catch1(object):
     def __call__(self, body):
         return _try_catch(self.body, self.catch_pairs + [(self.exc_class, body)])
 
+    def do(self, body):
+        return self(do(body))
+
+
+class _else_proxy(object):
+    def __init__(self, try_obj):
+        self.try_obj = try_obj
+
+    def __call__(self, body):
+        return _try_catch_else(self.try_obj.body, self.try_obj.catch_pairs, body)
+
+    def do(self, body):
+        return self(do(body))
+
 
 class _try_catch(object):
     def __init__(self, body, catch_pairs):
         self.body = body
         self.catch_pairs = catch_pairs
 
+        self.else_ = _else_proxy(self)
+
     def except_(self, exc_class):
         return _try_catch1(self.body, self.catch_pairs, exc_class)
-
-    def else_(self, body):
-        return _try_catch_else(self.body, self.catch_pairs, body)
 
     def finally_(self, body):
         return _try_catch_finally(self.body, self.catch_pairs, body)
@@ -235,12 +301,12 @@ class _try_catch_finally(object):
 
 def _try_catch_impl(obj, body, catch_pairs, finally_body=_unset, else_body=_unset):
     try:
-        +(pipe(obj) | body)
+        result = +(pipe(obj) | body)
 
     except Exception as e:
         for catch_class, catch_body in catch_pairs:
             if isinstance(e, catch_class):
-                +(pipe(obj) | catch_body)
+                result = +(pipe(obj) | catch_body)
                 break
 
         else:
@@ -248,13 +314,13 @@ def _try_catch_impl(obj, body, catch_pairs, finally_body=_unset, else_body=_unse
 
     else:
         if else_body is not _unset:
-            +(pipe(obj) | else_body)
+            result = +(pipe(obj) | else_body)
 
     finally:
         if finally_body is not _unset:
             +(pipe(obj) | finally_body)
 
-    return obj
+    return result
 
 
 # TODO: implement with statement
