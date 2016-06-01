@@ -1,6 +1,8 @@
 from __future__ import division
+import pickle
 import unittest
-from flowly import pipe, this, lit
+
+from flowly import pipe, this, lit, wrapped
 
 
 class TestPipe(unittest.TestCase):
@@ -126,6 +128,19 @@ class TestPipeFunc(unittest.TestCase):
     @staticmethod
     def _args(obj):
         return set(key for key in obj.__dict__.keys() if not key.startswith("_"))
+
+
+class TestWraped(unittest.TestCase):
+    def test_base_behavior(self):
+        self.assertEqual(5, +(pipe(3) | foo()))
+
+    def test_picle_unpickle(self):
+        self.assertEqual(5, +(pipe(3) | pickle.loads(pickle.dumps(foo))()))
+
+
+@wrapped
+def foo(obj):
+    return obj + 2
 
 
 if __name__ == "__main__":

@@ -1,3 +1,4 @@
+import functools as ft
 import itertools as it
 import operator
 
@@ -429,6 +430,14 @@ def wrap(module_like):
         for name, var in vars(module_like).items()
         if not name.startswith("_") and callable(var)
     )
+
+
+def wrapped(func):
+    @ft.wraps(func)
+    def impl(*args, **kwargs):
+        return bound_callable(func, args, kwargs)
+
+    return impl
 
 
 class namespace(object):
