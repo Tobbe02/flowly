@@ -322,6 +322,9 @@ class bound_pipe(object):
     def __pos__(self):
         return self.obj
 
+    def __neg__(self):
+        return None
+
 
 class unbound_pipe(flowly_base):
     def __init__(self, transforms=()):
