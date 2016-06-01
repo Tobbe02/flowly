@@ -415,3 +415,37 @@ def pipe_eval(obj, expr):
 
 def chained(*args):
     return list(it.chain(*args))
+
+
+def wrap(module_like):
+    """Wrap every callable inside a module-like object by an unbound_callable.
+    """
+    return namespace(
+        (name, unbound_callable(var))
+        for name, var in vars(module_like).items()
+        if not name.startswith("_") and callable(var)
+    )
+
+
+class namespace(object):
+    def __init__(self, items):
+        for key, value in items:
+            setattr(self, key, value)
+
+
+class unbound_callable(object):
+    def __init__(self, func):
+        self.func = func
+
+    def __call__(self, *args, **kwargs):
+        return bound_callable(self.func, args, kwargs)
+
+
+class bound_callable(object):
+    def __init__(self, func, args, kwargs):
+        self.func = func
+        self.args = args
+        self.kwargs = kwargs
+
+    def _flowly_eval_(self, obj):
+        return self.func(obj, *self.args, **self.kwargs)
