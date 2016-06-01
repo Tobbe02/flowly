@@ -310,60 +310,64 @@ def pipe(obj=_unset):
 pipe.func = create_callable_pipe
 
 
-class bound_pipe(object):
-    """Allow easy chaining of transformations of an object.
-    """
-    def __init__(self, obj):
-        self.obj = obj
+class pipe_base(object):
+    def __init__(self, transforms=()):
+        super(pipe_base, self).__init__()
+        self.transforms = list(transforms)
+
+    def _flowly_items_(self):
+        return list(enumerate(self.transforms))
+
+    def _eval(self, obj):
+        for transform in self.transforms:
+            obj = pipe_eval(obj, transform)
+
+        return obj
 
     def __or__(self, transform):
-        return bound_pipe(pipe_eval(self.obj, transform))
+        return self._with(transform)
+
+    def _with(self, transform):
+        raise NotImplementedError()
+
+
+class bound_pipe(pipe_base):
+    """Allow easy chaining of transformations of an object.
+    """
+    def __init__(self, obj, _transforms=()):
+        super(bound_pipe, self).__init__(_transforms)
+        self.obj = obj
+
+    def _with(self, transform):
+        return bound_pipe(self.obj, self.transforms + [transform])
 
     def __pos__(self):
-        return self.obj
+        return self._eval(self.obj)
 
     def __neg__(self):
+        self._eval(self.obj)
         return None
 
 
-class unbound_pipe(flowly_base):
-    def __init__(self, transforms=()):
-        self.transforms = list(transforms)
-
-    def __or__(self, transform):
+class unbound_pipe(pipe_base, flowly_base):
+    def _with(self, transform):
         return unbound_pipe(self.transforms + [transform])
 
-    def _flowly_items_(self):
-        return list(enumerate(self.transforms))
-
-
     def _flowly_eval_(self, obj):
-        current = bound_pipe(obj)
-
-        for transform in self.transforms:
-            current = current | transform
-
-        return +current
+        return self._eval(obj)
 
 
-class callable_pipe(flowly_base):
+
+class callable_pipe(pipe_base, flowly_base):
     def __init__(self, args, transforms=()):
+        super(callable_pipe, self).__init__(transforms)
         self.args = args
-        self.transforms = list(transforms)
 
-    def __or__(self, transform):
+    def _with(self, transform):
         return callable_pipe(self.args, self.transforms + [transform])
 
-    def _flowly_items_(self):
-        return list(enumerate(self.transforms))
-
     def __call__(self, *args, **kwargs):
-        current = bound_pipe(build_argument(self.args, args, kwargs))
-
-        for transform in self.transforms:
-            current = current | transform
-
-        return +current
+        return self._eval(build_argument(self.args, args, kwargs))
 
 
 def build_argument(argspec, args, kwargs):
