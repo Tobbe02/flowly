@@ -461,4 +461,7 @@ class bound_callable(object):
         self.kwargs = kwargs
 
     def _flowly_eval_(self, obj):
-        return self.func(obj, *self.args, **self.kwargs)
+        args = [+(pipe(obj) | eval_(arg)) for arg in self.args]
+        kwargs = {k: +(pipe(obj) | eval_(v)) for (k, v) in self.kwargs.items()}
+
+        return self.func(obj, *args, **kwargs)
