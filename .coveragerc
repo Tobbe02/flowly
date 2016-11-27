@@ -1,0 +1,7 @@
+[run]
+
+source = flowly
+
+omit =
+    /usr/*
+    tests/*
