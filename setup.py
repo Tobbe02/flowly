@@ -15,8 +15,7 @@ setup(
     author_email='mail@cprohm.de',
     license='MIT',
     packages=["flowly"],
-    tests_require=['nose2'],
-    test_suite='nose2.collector.collector',
+    tests_require=['pytest','dask'],
     classifiers=[
         'Development Status :: 4 - Beta',
 
