@@ -9,14 +9,22 @@ try:
 except ImportError:
     import builtins
 
+import dask.bag as db
+
 import toolz
 import toolz.functoolz
 from toolz import pipe, compose, concat
 from toolz.curried import map, mapcat
 
-from .tz import chained, show
+from .tz import (
+    chained,
+    show,
+    apply_concat,
+    apply_map_concat,
+)
 
 
+# TODO: change argument order for currying
 def apply(bag, transform, rules=None):
     """Translate the dask object via the given transformation.
     """
@@ -67,9 +75,19 @@ def _default_rules():
             apply=lambda bag, transform, rules: bag.concat(),
         ),
         adict(
+            name='flowly.tz.apply_concat',
+            match=lambda transform, rules: isinstance(transform, apply_concat),
+            apply=_apply__flowly__tz__apply_concat,
+        ),
+        adict(
+            name='flowly.tz.apply_map_concat',
+            match=lambda transform, rules: isinstance(transform, apply_map_concat),
+            apply=_apply__flowly__tz__apply_map_concat,
+        ),
+        adict(
             name='flowly.tz.chained',
             match=lambda transform, rules: isinstance(transform, chained),
-            apply=_apply__flowly__tz__chaiend,
+            apply=_apply__flowly__tz__chained,
         ),
         adict(
             name='callable',
@@ -84,7 +102,19 @@ def _apply__toolz__compose(bag, transform, rules):
     return _apply_funcs(bag, funcs, rules)
 
 
-def _apply__flowly__tz__chaiend(bag, transform, rules):
+def _apply__flowly__tz__apply_concat(bag, transform, rules):
+    return db.concat([
+        apply(bag, func, rules=rules) for func in transform.funcs
+    ])
+
+
+def _apply__flowly__tz__apply_map_concat(bag, transform, rules):
+    return db.concat([
+        apply(bag, map(func), rules=rules) for func in transform.funcs
+    ])
+
+
+def _apply__flowly__tz__chained(bag, transform, rules):
     return _apply_funcs(bag, transform.funcs, rules)
 
 

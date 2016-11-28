@@ -1,5 +1,13 @@
 from __future__ import print_function, division, absolute_import
-from flowly.tz import chained, optional, raise_, try_call, show
+from flowly.tz import (
+    apply_concat,
+    apply_map_concat,
+    chained,
+    optional,
+    raise_,
+    show,
+    try_call,
+)
 
 import pytest
 
@@ -16,6 +24,30 @@ def test_chained__example():
 def test_chained__composition():
     transform = chained(lambda a: a * 2) + chained(lambda a: a -3)
     assert transform(5) == 7
+
+
+def test_apply_concat__example():
+    transform = apply_concat([
+        lambda x: [2 * i for i in x],
+        lambda x: [3 * i for i in x],
+    ])
+
+    actual = sorted(transform([1, 2, 3, 4]))
+    expected = sorted([2, 4, 6, 8, 3, 6, 9, 12])
+
+    assert actual == expected
+
+
+def test_apply_map_concat__example():
+    transform = apply_map_concat([
+        lambda x: 2 * x,
+        lambda x: 3 * x,
+    ])
+
+    actual = sorted(transform([1, 2, 3, 4]))
+    expected = sorted([2, 4, 6, 8, 3, 6, 9, 12])
+
+    assert actual == expected
 
 
 def test_optional__example():
