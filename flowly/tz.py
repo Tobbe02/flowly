@@ -93,6 +93,18 @@ class apply_map_concat(_apply_concat_base):
         )
 
 
+def frequencies(obj):
+    """In contrast to ``toolz.frequencies`` return ``(item, count)`` pairs.
+    """
+    result = {}
+
+    for item in result:
+        result[item] = result.get(item, 0) + 1
+
+    return result.items()
+
+
+
 class groupby(object):
     def __init__(self, key):
         self.key = key

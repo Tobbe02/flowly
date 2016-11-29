@@ -2,6 +2,7 @@
 """
 import itertools as it
 import functools as ft
+import operator as op
 
 try:
     import __builtins__ as builtins
@@ -13,13 +14,21 @@ import dask.bag as db
 
 import toolz
 import toolz.functoolz
-from toolz import pipe, compose, concat, partition_all, count
-from toolz.curried import map, mapcat
+from toolz import (
+    concat,
+    compose,
+    count,
+    merge,
+    partition_all,
+    pipe,
+)
+from toolz.curried import map, mapcat, pluck, random_sample
 
 from .tz import (
     apply_concat,
     apply_map_concat,
     chained,
+    frequencies,
     groupby,
     reduction,
     show,
@@ -45,9 +54,22 @@ def apply(bag, transform, rules=None):
 def _default_rules():
     return [
         adict(
-            name='builtins.sum',
-            match=lambda transform, rules: transform == builtins.sum,
-            apply=lambda bag, transform, rules: bag.sum(),
+            name='builtins.sum', match=_match_equal(builtins.sum), apply=_methodcaller('sum'),
+        ),
+        adict(
+            name='builtins.any', match=_match_equal(builtins.all), apply=_methodcaller('all'),
+        ),
+        adict(
+            name='builtins.any', match=_match_equal(builtins.any), apply=_methodcaller('any'),
+        ),
+        adict(
+            name='builtins.len', match=_match_equal(builtins.len), apply=_methodcaller('count'),
+        ),
+        adict(
+            name='builtins.max', match=_match_equal(builtins.max), apply=_methodcaller('max'),
+        ),
+        adict(
+            name='builtins.min', match=_match_equal(builtins.min), apply=_methodcaller('min'),
         ),
         adict(
             name='toolz.concat',
@@ -60,23 +82,60 @@ def _default_rules():
             apply=_apply__toolz__compose,
         ),
         adict(
-            name='toolz.count',
-            match=lambda transform, rules: transform == count,
-            apply=lambda bag, transform, rules: bag.count(),
+            name='toolz.count', match=_match_equal(count), apply=_methodcaller('count'),
+        ),
+        adict(
+            name='toolz.frequencies',
+            match=_match_equal(frequencies),
+            apply=_methodcaller('frequencies'),
+        ),
+        adict(
+            name='toolz.curried.filter',
+            match=_match_curried(builtins.filter),
+            apply=lambda bag, transform, rules: bag.filter(*transform.args, **transform.keywords)
         ),
         adict(
             name='toolz.curried.map',
-            match=lambda transform, rules: (
-                isinstance(transform, toolz.curry) and (transform.func is builtins.map)
-            ),
+            match=_match_curried(builtins.map),
             apply=lambda bag, transform, rules: bag.map(*transform.args, **transform.keywords),
         ),
         adict(
             name='toolz.curried.mapcat',
-            match=lambda transform, rules: (
-                isinstance(transform, toolz.curry) and (transform.func is toolz.mapcat)
-            ),
+            match=_match_curried(toolz.mapcat),
             apply=lambda bag, transform, rules: bag.map(*transform.args).concat(),
+        ),
+        adict(
+            name='toolz.curried.pluck',
+            match=_match_curried(toolz.pluck),
+            apply=lambda bag, transform, rules: bag.pluck(*transform.args, **transform.keywords),
+        ),
+        adict(
+            name='toolz.curried.random_sample',
+            match=_match_curried(toolz.random_sample),
+            apply=lambda bag, transform, rules: bag.random_sample(*transform.args, **transform.keywords),
+        ),
+        adict(
+            name='toolz.curried.remove',
+            match=_match_curried(toolz.remove),
+            apply=lambda bag, transform, rules: bag.remove(*transform.args, **transform.keywords),
+        ),
+        adict(
+            name='toolz.curried.take',
+            match=_match_curried(toolz.take),
+            apply=lambda bag, transform, rules: bag.take(
+                *transform.args,
+                **merge(transform.keywords, dict(compute=False, npartitions=-1))
+            ),
+        ),
+        adict(
+            name='toolz.curried.topk',
+            match=_match_curried(toolz.topk),
+            apply=lambda bag, transform, rules: bag.topk(*transform.args, **transform.keywords),
+        ),
+        adict(
+            name='toolz.unique',
+            match=_match_equal(toolz.unique),
+            apply=_methodcaller('distinct'),
         ),
         adict(
             name='itertools.chain.from_iterable',
@@ -85,38 +144,58 @@ def _default_rules():
         ),
         adict(
             name='flowly.tz.apply_concat',
-            match=lambda transform, rules: isinstance(transform, apply_concat),
+            match=_match_isinstance(apply_concat),
             apply=_apply__flowly__tz__apply_concat,
         ),
         adict(
             name='flowly.tz.apply_map_concat',
-            match=lambda transform, rules: isinstance(transform, apply_map_concat),
+            match=_match_isinstance(apply_map_concat),
             apply=_apply__flowly__tz__apply_map_concat,
         ),
         adict(
             name='flowly.tz.chained',
-            match=lambda transform, rules: isinstance(transform, chained),
+            match=_match_isinstance(chained),
             apply=_apply__flowly__tz__chained,
         ),
         adict(
             name='flowly.tz.groupby',
-            match=lambda transform, rules: isinstance(transform, groupby),
+            match=_match_isinstance(groupby),
             # TODO: inject remaining arguments into groupby
             apply=lambda bag, transform, rules: bag.groupby(transform.key),
         ),
         adict(
             name='flowly.tz.reduction',
-            match=lambda transform, rules: isinstance(transform, reduction),
+            match=_match_isinstance(reduction),
             apply=lambda bag, transform, rules: bag.reduction(
                 transform.perpartition, transform.aggregate, split_every=transform.split_every,
             ),
         ),
+        # TODO: let any curried callable fallback to the callable itself, if not args were given
         adict(
             name='callable',
             match=lambda transform, rules: callable(transform),
             apply=lambda bag, transform, rules: transform(bag),
         )
     ]
+
+
+def _match_equal(obj):
+    return lambda transform, rules: transform == obj
+
+
+def _match_isinstance(kls):
+    return lambda transform, rules: isinstance(transform, kls)
+
+
+def _match_curried(func):
+    return lambda transform, rules: (
+        isinstance(transform, toolz.curry) and (transform.func is func)
+    )
+
+
+
+def _methodcaller(name):
+    return lambda bag, transform, rules: getattr(bag, name)()
 
 
 def _apply__toolz__compose(bag, transform, rules):
@@ -158,5 +237,14 @@ def _apply_funcs(bag, funcs, rules):
     return bag
 
 
+def unwrap_itemgetter(itemgetter):
+    return itemgetter(echo_dict())
+
+
 class adict(dict):
     __getattr__ = dict.__getitem__
+
+
+class echo_dict(object):
+    def __getitem__(self, key):
+        return key

@@ -1,12 +1,28 @@
 from __future__ import print_function, division, absolute_import
 import itertools as it
+import operator as op
 
-from toolz import compose, concat, count
-from toolz.curried import map, mapcat
+from toolz import compose, concat, count, frequencies, unique
+from toolz.curried import (
+    filter,
+    map,
+    mapcat,
+    pluck,
+    random_sample,
+    remove,
+    take,
+    topk,
+)
 import dask.bag as db
 
 from flowly.dsk import apply
-from flowly.tz import chained, apply_concat, apply_map_concat, reduction
+from flowly.tz import (
+    apply_concat,
+    apply_map_concat,
+    chained,
+    frequencies,
+    reduction,
+)
 
 import pytest
 
@@ -18,6 +34,39 @@ def test_unknown_func():
         apply(obj, None)
 
 
+@pytest.mark.parametrize('input,output', [
+    ([True, True, False, True, False], False),
+    ([True, True, True, True, True], True),
+    ([False, False, False, False, False], False),
+])
+def test_all(input, output):
+    assert apply(db.from_sequence(input, npartitions=3), all).compute() is output
+
+
+@pytest.mark.parametrize('input,output', [
+    ([True, True, False, True, False], True),
+    ([True, True, True, True, True], True),
+    ([False, False, False, False, False], False),
+])
+def test_any(input, output):
+    assert apply(db.from_sequence(input, npartitions=3), any).compute() is output
+
+
+def test_len():
+    obj = db.from_sequence(range(10), npartitions=3)
+    assert apply(obj, len).compute() == 10
+
+
+def test_max():
+    obj = db.from_sequence(range(10), npartitions=3)
+    assert apply(obj, max).compute() == 9
+
+
+def test_min():
+    obj = db.from_sequence(range(10), npartitions=3)
+    assert apply(obj, min).compute() == 0
+
+
 def test_sum():
     obj = db.from_sequence(range(10), npartitions=3)
 
@@ -27,9 +76,44 @@ def test_sum():
     assert actual.compute() == expected
 
 
+def test_toolz_pluck():
+    obj = db.from_sequence([
+        {'a': 1, 'b': 2}, {'a': 3, 'b': 4}, {'a': 5, 'b': 6},
+        {'a': 7, 'b': 8}, {'a': 9, 'b': 0}
+    ], npartitions=3)
+
+    actual = apply(obj, pluck('a'))
+    assert actual.compute() == [1, 3, 5, 7, 9]
+
+
+def test_toolz_pluck_multiple():
+    obj = db.from_sequence([
+        {'a': 1, 'b': 2}, {'a': 3, 'b': 4}, {'a': 5, 'b': 6},
+        {'a': 7, 'b': 8}, {'a': 9, 'b': 0}
+    ], npartitions=3)
+
+    actual = apply(obj, pluck(['a', 'b']))
+    assert actual.compute() == [(1, 2), (3, 4), (5, 6), (7, 8), (9, 0)]
+
+
+def test_toolz_pluck_default():
+    obj = db.from_sequence([
+        {'a': 1, 'b': 2}, {'a': 3, 'b': 4}, {'a': 5, 'b': 6},
+        {'a': 7, 'b': 8}, {'a': 9, 'c': 0}
+    ], npartitions=3)
+
+    actual = apply(obj, pluck(['a', 'b'], default=-1))
+    assert actual.compute() == [(1, 2), (3, 4), (5, 6), (7, 8), (9, -1)]
+
+
 def test_toolz_count():
     obj = db.from_sequence(range(10), npartitions=3)
     assert apply(obj, count).compute() == 10
+
+
+def test_flowly_tz_frequencies():
+    obj = db.from_sequence([True, False, True, False, False], npartitions=3)
+    assert sorted(apply(obj, frequencies).compute()) == sorted([(True, 2), (False, 3)])
 
 
 def test_toolz_map():
@@ -50,6 +134,52 @@ def test_toolz_mapcat():
     assert actual.compute() == expected
 
 
+def test_toolz_random_sample():
+    obj = db.from_sequence(range(10), npartitions=3)
+    apply(obj, random_sample(0.51)).compute()
+
+
+def test_toolz_random_sample__random_state():
+    # just test that it does not raise an exception
+    obj = db.from_sequence(range(10), npartitions=3)
+    apply(obj, random_sample(0.51, random_state=5)).compute()
+
+
+def test_toolz_filter():
+    obj = db.from_sequence(range(10), npartitions=3)
+    actual = apply(obj, filter(lambda x: x % 2 == 0))
+
+    assert actual.compute() == [0, 2, 4, 6, 8]
+
+
+def test_toolz_remove():
+    obj = db.from_sequence(range(10), npartitions=3)
+    actual = apply(obj, remove(lambda x: x % 2 == 1))
+
+    assert actual.compute() == [0, 2, 4, 6, 8]
+
+
+def test_toolz_take():
+    obj = db.from_sequence(range(10), npartitions=3)
+    actual = apply(obj, take(5))
+
+    assert actual.compute() == [0, 1, 2, 3, 4]
+
+
+def test_toolz_topk():
+    obj = db.from_sequence(range(100), npartitions=3)
+    actual = apply(obj, topk(5))
+
+    assert sorted(actual.compute()) == sorted([99, 98, 97, 96, 95])
+
+
+def test_toolz_topk__key():
+    obj = db.from_sequence(range(100), npartitions=3)
+    actual = apply(obj, topk(5, key=lambda i: -i))
+
+    assert sorted(actual.compute()) == sorted([0, 1, 2, 3, 4])
+
+
 def test_toolz_compose():
     obj = db.from_sequence([[1, 2, 3], [4, 5, 6], [7, 8, 9]], npartitions=3)
 
@@ -61,6 +191,12 @@ def test_toolz_compose():
     expected = sum(range(1, 10))
     assert actual.compute() == expected
 
+
+def test_toolz_unique():
+    obj = db.from_sequence((1, 2, 1, 3), npartitions=3)
+    actual = apply(obj, unique)
+
+    assert sorted(actual.compute()) == [1, 2, 3]
 
 
 @pytest.mark.parametrize('impl', [
