@@ -2,6 +2,7 @@ from __future__ import print_function, division, absolute_import
 from flowly.tz import (
     apply_concat,
     apply_map_concat,
+    build_dict,
     chained,
     frequencies,
     groupby,
@@ -52,6 +53,15 @@ def test_apply_map_concat__example():
     expected = sorted([2, 4, 6, 8, 3, 6, 9, 12])
 
     assert actual == expected
+
+
+def test_build_dict():
+    transform = build_dict(
+        a=lambda x: 2 * x,
+        b=lambda x: 3 * x,
+    )
+
+    assert transform(4) == dict(a=8, b=12)
 
 
 def test_frequencies():

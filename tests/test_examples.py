@@ -2,11 +2,11 @@ from __future__ import print_function, division, absolute_import
 
 import operator as op
 
-import dask.bag  as db
+import dask.bag as db
 import pytest
 
 from flowly.dsk import apply
-from flowly.tz import apply_concat, chained, seq, show
+from flowly.tz import apply_concat, chained, seq
 
 executors = [
     lambda graph, obj: graph(obj),

@@ -26,6 +26,14 @@ class ShowImpl(object):
 show = ShowImpl()
 
 
+class build_dict(object):
+    def __init__(self, **assigments):
+        self.assigments = assigments
+
+    def __call__(self, obj):
+        return {k: func(obj) for (k, func) in self.assigments.items()}
+
+
 class chained(object):
     def __init__(self, *funcs):
         self.funcs = funcs

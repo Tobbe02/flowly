@@ -8,6 +8,7 @@ try:
 except ImportError:
     import builtins
 
+import dask
 import dask.bag as db
 from dask.delayed import delayed
 
@@ -22,6 +23,7 @@ from toolz import (
 from .tz import (
     apply_concat,
     apply_map_concat,
+    build_dict,
     chained,
     frequencies,
     groupby,
@@ -152,6 +154,11 @@ def _default_rules():
             apply=_apply__flowly__tz__apply_map_concat,
         ),
         adict(
+            name='flowly.tz.build_dict',
+            match=_match_isinstance(build_dict),
+            apply=_build_dask_dict,
+        ),
+        adict(
             name='flowly.tz.chained',
             match=_match_isinstance(chained),
             apply=_apply__flowly__tz__chained,
@@ -240,5 +247,24 @@ def _apply_funcs(bag, funcs, rules):
     return bag
 
 
+def _build_dask_dict(obj, transform, rules):
+    return dask_dict({
+        k: apply(obj, func, rules=rules) for (k, func) in transform.assigments.items()
+    })
+
+
 class adict(dict):
     __getattr__ = dict.__getitem__
+
+
+class dask_dict(dict):
+    def copy(self):
+        return dask_dict(self)
+
+    def compute(self, **kwargs):
+        items = list(self.items())
+        keys = [key for key, _ in items]
+        values = [value for _, value in items]
+        values = dask.compute(*values, **kwargs)
+
+        return dask_dict(zip(keys, values))
