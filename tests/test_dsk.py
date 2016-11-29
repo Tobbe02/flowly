@@ -1,5 +1,6 @@
 from __future__ import print_function, division, absolute_import
 import itertools as it
+import operator as op
 
 from toolz import compose, concat, count, unique
 from toolz.curried import (
@@ -13,14 +14,16 @@ from toolz.curried import (
     topk,
 )
 import dask.bag as db
+from dask.delayed import delayed
 
-from flowly.dsk import apply
+from flowly.dsk import apply, item_from_object
 from flowly.tz import (
     apply_concat,
     apply_map_concat,
     chained,
     frequencies,
     reduction,
+    seq,
 )
 
 import pytest
@@ -250,6 +253,13 @@ def test_flowly_tz_reduce():
     actual = apply(obj, transform).compute()
 
     assert actual == 5.0
+
+
+def test_flowly_tz_seq():
+    obj = item_from_object(42)
+    actual = apply(obj, seq)
+
+    assert actual.compute() == [42]
 
 
 def test_flowly_tz_chained():

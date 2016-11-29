@@ -9,6 +9,7 @@ except ImportError:
     import builtins
 
 import dask.bag as db
+from dask.delayed import delayed
 
 import toolz
 import toolz.functoolz
@@ -25,9 +26,14 @@ from .tz import (
     frequencies,
     groupby,
     reduction,
+    seq,
 )
 
 id_sequence = it.count()
+
+
+def item_from_object(obj):
+    return db.Item.from_delayed(delayed(obj))
 
 
 # TODO: change argument order for currying
@@ -163,6 +169,13 @@ def _default_rules():
                 transform.perpartition, transform.aggregate, split_every=transform.split_every,
             ),
         ),
+        adict(
+            name='flowly.tz.seq',
+            match=_match_equal(seq),
+            apply=lambda item, transform, rules: db.from_delayed([
+                item.apply(lambda i: [i]).to_delayed()
+            ])
+        ),
         # TODO: let any curried callable fallback to the callable itself, if not args were given
         adict(
             name='callable',
@@ -196,9 +209,7 @@ def _apply__toolz__compose(bag, transform, rules):
 
 
 def _apply__flowly__tz__apply_concat(bag, transform, rules):
-    return db.concat([
-        apply(bag, func, rules=rules) for func in transform.funcs
-    ])
+    return db.concat([apply(bag, func, rules=rules) for func in transform.funcs])
 
 
 def _apply__flowly__tz__apply_map_concat(bag, transform, rules):

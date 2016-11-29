@@ -8,6 +8,7 @@ from flowly.tz import (
     optional,
     raise_,
     reduction,
+    seq,
     show,
     try_call,
 )
@@ -77,6 +78,12 @@ def test_reduction():
     )
 
     assert transform(obj) == 5.0
+
+
+def test_seq():
+    assert seq(1) == [1]
+    assert seq(1, 2) == [1, 2]
+    assert seq(1, 2, 3) == [1, 2, 3]
 
 
 def test_optional__example():

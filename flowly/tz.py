@@ -49,14 +49,19 @@ class _apply_concat_base(object):
 class apply_concat(_apply_concat_base):
     """Apply the functions in parallel and concatenate the results.
 
+    .. note::
+
+        The order of the result is not guaranteed.
+
+        Also care has to be taken for iterable arguments. They must be iterable
+        repeatedly or or only a single function may iterate over the object.
+
     Equivalent to::
 
         it.chain.from_iterable(func(obj, *args, **kwargs) for func in funcs)
 
     Each function should map from an iterable to an iterable. The result will
     be the concatenation of all items in the results for all functions.
-
-    Note: the order is not guaranteed.
 
     :param Iterable[Callable[Any,...]] funcs:
         The functions to apply. Needs to be finite.
@@ -65,7 +70,7 @@ class apply_concat(_apply_concat_base):
         A hint to parallel executors about the desired chunk size.
     """
     def __call__(self, obj):
-        return it.chain.from_iterable(func(obj) for func in self.funcs)
+        return list(it.chain.from_iterable(func(obj) for func in self.funcs))
 
 
 class apply_map_concat(_apply_concat_base):
@@ -101,7 +106,7 @@ def frequencies(obj):
     for item in obj:
         result[item] = result.get(item, 0) + 1
 
-    return result.items()
+    return list(result.items())
 
 
 class groupby(object):
@@ -113,7 +118,7 @@ class groupby(object):
         for item in obj:
             result.setdefault(self.key(item), []).append(item)
 
-        return result.items()
+        return list(result.items())
 
 
 class reduction(object):
@@ -124,6 +129,12 @@ class reduction(object):
 
     def __call__(self, obj):
         return self.aggregate([self.perpartition(obj)])
+
+
+def seq(*items):
+    """Turn one or multiple values into a list.
+    """
+    return list(items)
 
 
 def optional(val):
