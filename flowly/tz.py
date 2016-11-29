@@ -93,6 +93,28 @@ class apply_map_concat(_apply_concat_base):
         )
 
 
+class groupby(object):
+    def __init__(self, key):
+        self.key = key
+
+    def __call__(self, obj):
+        result = {}
+        for item in obj:
+            result.setdefault(self.key(item), []).append(item)
+
+        return result.items()
+
+
+class reduction(object):
+    def __init__(self, perpartition, aggregate, split_every=None):
+        self.perpartition = perpartition
+        self.aggregate = aggregate
+        self.split_every = split_every
+
+    def __call__(self, obj):
+        return self.aggregate([self.perpartition(obj)])
+
+
 def optional(val):
     return Just(val) if val is not None else Nothing()
 

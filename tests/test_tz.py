@@ -3,8 +3,10 @@ from flowly.tz import (
     apply_concat,
     apply_map_concat,
     chained,
+    groupby,
     optional,
     raise_,
+    reduction,
     show,
     try_call,
 )
@@ -48,6 +50,27 @@ def test_apply_map_concat__example():
     expected = sorted([2, 4, 6, 8, 3, 6, 9, 12])
 
     assert actual == expected
+
+
+def test_groupby():
+    transform = groupby(lambda i: i % 2)
+    actual = sorted(transform([1, 2, 3, 4, 5, 6, 7]))
+    expected = sorted([(1, [1, 3, 5, 7]), (0, [2, 4, 6])])
+
+    assert actual == expected
+
+
+def test_reduction():
+    obj = [1, 2, 3, 4, 5, 6, 7, 8, 9]
+
+    # compute the mean
+    transform = reduction(
+        lambda l: (sum(l), len(l),),
+        lambda items: sum(s for s, _ in items) / max(1, sum(c for _, c in items))
+    )
+
+    assert transform(obj) == 5.0
+
 
 
 def test_optional__example():
