@@ -3,6 +3,7 @@ from flowly.tz import (
     apply_concat,
     apply_map_concat,
     chained,
+    frequencies,
     groupby,
     optional,
     raise_,
@@ -52,6 +53,12 @@ def test_apply_map_concat__example():
     assert actual == expected
 
 
+def test_frequencies():
+    actual = sorted(frequencies([1, 1, 2, 2, 2]))
+    expected = sorted([(1, 2), (2, 3)])
+    assert actual == expected
+
+
 def test_groupby():
     transform = groupby(lambda i: i % 2)
     actual = sorted(transform([1, 2, 3, 4, 5, 6, 7]))
@@ -70,7 +77,6 @@ def test_reduction():
     )
 
     assert transform(obj) == 5.0
-
 
 
 def test_optional__example():

@@ -98,7 +98,7 @@ def frequencies(obj):
     """
     result = {}
 
-    for item in result:
+    for item in obj:
         result[item] = result.get(item, 0) + 1
 
     return result.items()
