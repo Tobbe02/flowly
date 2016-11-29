@@ -1,8 +1,6 @@
 from ._base import flowly_base, eval_expr, callable_base, expr, pipe, lit, wrapped, this
 
-import collections
 import functools as ft
-import itertools as it
 
 import numpy as np
 import pandas as pd
@@ -12,9 +10,6 @@ import six
 
 cut = lit(pd.cut)
 qcut = lit(pd.qcut)
-
-
-from .mpl import plot_params
 
 
 @wrapped
@@ -57,6 +52,7 @@ class assign_base(object):
 
     def _eval(self, df):
         return {k: eval_expr(df, v) for (k, v) in self.expressions.items()}
+
 
 class assign(assign_base):
     def __call__(self, df):

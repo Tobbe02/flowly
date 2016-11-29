@@ -1,8 +1,6 @@
 """Execute transformations via dask.
 """
 import itertools as it
-import functools as ft
-import operator as op
 
 try:
     import __builtins__ as builtins
@@ -15,14 +13,10 @@ import dask.bag as db
 import toolz
 import toolz.functoolz
 from toolz import (
-    concat,
-    compose,
     count,
     merge,
     partition_all,
-    pipe,
 )
-from toolz.curried import map, mapcat, pluck, random_sample
 
 from .tz import (
     apply_concat,
@@ -31,7 +25,6 @@ from .tz import (
     frequencies,
     groupby,
     reduction,
-    show,
 )
 
 id_sequence = it.count()
@@ -193,7 +186,6 @@ def _match_curried(func):
     )
 
 
-
 def _methodcaller(name):
     return lambda bag, transform, rules: getattr(bag, name)()
 
@@ -237,14 +229,5 @@ def _apply_funcs(bag, funcs, rules):
     return bag
 
 
-def unwrap_itemgetter(itemgetter):
-    return itemgetter(echo_dict())
-
-
 class adict(dict):
     __getattr__ = dict.__getitem__
-
-
-class echo_dict(object):
-    def __getitem__(self, key):
-        return key

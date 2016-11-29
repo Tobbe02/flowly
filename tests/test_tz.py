@@ -24,7 +24,7 @@ def test_chained__example():
 
 
 def test_chained__composition():
-    transform = chained(lambda a: a * 2) + chained(lambda a: a -3)
+    transform = chained(lambda a: a * 2) + chained(lambda a: a - 3)
     assert transform(5) == 7
 
 

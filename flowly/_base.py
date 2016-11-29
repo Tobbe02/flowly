@@ -358,7 +358,6 @@ class unbound_pipe(pipe_base, flowly_base):
         return self._eval(obj)
 
 
-
 class callable_pipe(pipe_base, flowly_base):
     def __init__(self, args, transforms=()):
         super(callable_pipe, self).__init__(transforms)

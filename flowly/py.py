@@ -1,5 +1,5 @@
 from __future__ import print_function
-from ._base import side_effect, lit, _unset, callable_base, flowly_base, pipe, eval_
+from ._base import side_effect, lit, _unset, flowly_base, pipe, eval_
 
 import itertools as it
 import functools as ft

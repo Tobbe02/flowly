@@ -59,8 +59,7 @@ def define_bf():
     """
     from flowly import pipe, this
     from flowly.py import (
-        for_, assign, as_tuple, if_, setitem, while_, len, raise_,
-        print, or_, and_
+        assign, as_tuple, if_, setitem, while_, len, or_, raise_,
     )
 
     return (

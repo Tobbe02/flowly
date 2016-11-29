@@ -104,7 +104,6 @@ def frequencies(obj):
     return result.items()
 
 
-
 class groupby(object):
     def __init__(self, key):
         self.key = key

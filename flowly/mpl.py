@@ -1,6 +1,6 @@
 from ._base import lit, side_effect, wrapped
 import matplotlib.pyplot as plt
-import six
+
 
 # TODO: add proper __all__
 

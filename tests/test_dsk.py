@@ -1,8 +1,7 @@
 from __future__ import print_function, division, absolute_import
 import itertools as it
-import operator as op
 
-from toolz import compose, concat, count, frequencies, unique
+from toolz import compose, concat, count, unique
 from toolz.curried import (
     filter,
     map,

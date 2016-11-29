@@ -22,12 +22,12 @@ def test_setattr():
 
     obj = class_()
 
-    actual =  +(pipe(obj) | fpy.setattr(this, "foo", "bar") | this.foo)
+    actual = +(pipe(obj) | fpy.setattr(this, "foo", "bar") | this.foo)
     assert "bar" == actual
 
 
 def test_setitem():
-    actual =  +(
+    actual = +(
         pipe({}) |
         fpy.setitem(this, "foo", "bar") |
         this.keys() |
@@ -56,7 +56,7 @@ def test_assign():
         pass
 
     obj = class_()
-    actual =  +(pipe(obj) | fpy.assign(foo="bar") | this.foo)
+    actual = +(pipe(obj) | fpy.assign(foo="bar") | this.foo)
     assert "bar" == actual
 
 
@@ -87,7 +87,7 @@ class TestPipeFuncFor(unittest.TestCase):
         self.assertEqual(4, factorial_fragment(4, 4))
 
     def test_for_literal(self):
-        from flowly.py import assign, for_
+        from flowly.py import for_
 
         impl = (
             pipe.func() |
@@ -103,7 +103,7 @@ class TestPipeFuncFor(unittest.TestCase):
         impl = (
             pipe.func("arg") |
             assign(result="odd") |
-            if_((this.arg % 2) == 0).do( assign(result="even") ) |
+            if_((this.arg % 2) == 0).do(assign(result="even")) |
             this.result
         )
 
@@ -117,7 +117,7 @@ class TestPipeFuncFor(unittest.TestCase):
 
         impl = (
             pipe.func("arg") |
-            if_(True).do( assign(result="foo") ) |
+            if_(True).do(assign(result="foo")) |
             this.result
         )
 
@@ -129,8 +129,8 @@ class TestPipeFuncFor(unittest.TestCase):
 
         impl = (
             pipe.func("arg") |
-            if_((this.arg % 2) == 0).do( assign(result="even") )
-            .else_.do( assign(result="odd") ) |
+            if_((this.arg % 2) == 0).do(assign(result="even"))
+            .else_.do(assign(result="odd")) |
             this.result
         )
 
@@ -144,9 +144,9 @@ class TestPipeFuncFor(unittest.TestCase):
 
         impl = (
             pipe.func("arg") |
-            if_(this.arg == 0).do( assign(result="zero") )
-            .elif_(this.arg == 1).do( assign(result="one") )
-            .else_.do( assign(result="number") ) |
+            if_(this.arg == 0).do(assign(result="zero"))
+            .elif_(this.arg == 1).do(assign(result="one"))
+            .else_.do(assign(result="number")) |
             this.result
         )
 
@@ -160,10 +160,10 @@ class TestPipeFuncFor(unittest.TestCase):
 
         impl = (
             pipe.func("arg") |
-            if_(this.arg == 0).do( assign(result="zero") )
-            .elif_(this.arg == 1).do( assign(result="one") )
-            .elif_(this.arg == 2).do( assign(result="two") )
-            .else_.do( assign(result="number") ) |
+            if_(this.arg == 0).do(assign(result="zero"))
+            .elif_(this.arg == 1).do(assign(result="one"))
+            .elif_(this.arg == 2).do(assign(result="two"))
+            .else_.do(assign(result="number")) |
             this.result
         )
 
@@ -173,7 +173,7 @@ class TestPipeFuncFor(unittest.TestCase):
         self.assertEqual("number", impl(3))
 
     def test_if_elif_elif_else_functional(self):
-        from flowly.py import assign, if_
+        from flowly.py import if_
 
         impl = (
             pipe.func("arg") |
@@ -204,7 +204,7 @@ class TestPipeFuncFor(unittest.TestCase):
         self.assertEqual("has_items", impl({}))
 
     def test_try_catch_functional(self):
-        from flowly.py import do, try_, assign
+        from flowly.py import try_
 
         impl = (
             pipe.func("arg") |
@@ -230,7 +230,7 @@ class TestPipeFuncFor(unittest.TestCase):
         self.assertEqual("has_items", impl({}))
 
     def test_try_catch_else_functional(self):
-        from flowly.py import try_, assign
+        from flowly.py import try_
 
         impl = (
             pipe.func("arg") |
