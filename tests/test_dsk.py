@@ -14,8 +14,9 @@ from toolz.curried import (
     topk,
 )
 import dask.bag as db
+from dask.delayed import delayed
 
-from flowly.dsk import apply, item_from_object
+from flowly.dsk import apply, item_from_object, dask_dict
 from flowly.tz import (
     apply_concat,
     apply_map_concat,
@@ -28,6 +29,15 @@ from flowly.tz import (
 )
 
 import pytest
+
+
+def test_apply_error():
+    # check that the additional print statements works
+    # invalid rule object (no match / apply methods)
+    rules = [None]
+
+    with pytest.raises(AttributeError):
+        apply(None, None, rules)
 
 
 def test_unknown_func():
@@ -313,3 +323,8 @@ def test_generic_callable():
     expected = sum(range(10))
 
     assert actual.compute() == expected
+
+
+def test_dsk_dict__copy():
+    d = dask_dict(a=delayed(42), b=delayed(13)).copy().compute()
+    assert d == dict(a=42, b=13)
