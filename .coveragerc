@@ -5,3 +5,4 @@ source = flowly
 omit =
     /usr/*
     tests/*
+    flowly/ipy.py
