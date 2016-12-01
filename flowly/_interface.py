@@ -1,6 +1,6 @@
 from __future__ import print_function, division, absolute_import
 
-from ._base import eval_expr
+from ._base import eval_expr, is_flowly_expr
 
 
 class unary(object):
@@ -10,7 +10,11 @@ class unary(object):
         self.expr = expr
 
     def __call__(self, obj):
-        return eval_expr(obj, self.expr)
+        if is_flowly_expr(self.expr):
+            return eval_expr(obj, self.expr)
+
+        else:
+            return self.expr(obj)
 
 
 predicate = unary
@@ -28,7 +32,11 @@ class binary(object):
         self.expr = expr
 
     def __call__(self, a, b):
-        return eval_expr(binary_object(a, b), self.expr)
+        if is_flowly_expr(self.expr):
+            return eval_expr(binary_object(a, b), self.expr)
+
+        else:
+            return self.expr(a, b)
 
 
 class binary_object(object):

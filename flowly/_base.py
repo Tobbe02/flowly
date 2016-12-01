@@ -48,15 +48,16 @@ class _unset(object):
     pass
 
 
-def eval_expr(obj, expr):
-    try:
-        eval_func = expr._flowly_eval_
+def is_flowly_expr(expr):
+    return hasattr(expr, '_flowly_eval_')
 
-    except AttributeError:
-        return expr
+
+def eval_expr(obj, expr):
+    if is_flowly_expr(expr):
+        return expr._flowly_eval_(obj)
 
     else:
-        return eval_func(obj)
+        return expr
 
 
 class eval_(object):

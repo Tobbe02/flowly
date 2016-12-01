@@ -1,7 +1,7 @@
 from __future__ import print_function, division, absolute_import
 
 
-def add_toc():
+def add_toc():  # pragma: no cover
     """Add a dynamic table of contents to an ipython notebook.
 
     Any heading element (h1, h2, ...) in the DOM will add a link to the table of
