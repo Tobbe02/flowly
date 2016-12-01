@@ -1,4 +1,9 @@
 from __future__ import print_function, division, absolute_import
+
+import operator as op
+
+import pytest
+
 from flowly.tz import (
     apply_concat,
     apply_map_concat,
@@ -6,6 +11,7 @@ from flowly.tz import (
     chained,
     frequencies,
     groupby,
+    itemsetter,
     optional,
     raise_,
     reduction,
@@ -13,8 +19,6 @@ from flowly.tz import (
     show,
     try_call,
 )
-
-import pytest
 
 
 def test_chained__example():
@@ -57,11 +61,20 @@ def test_apply_map_concat__example():
 
 def test_build_dict():
     transform = build_dict(
-        a=lambda x: 2 * x,
+        dict(a=lambda x: 2 * x),
         b=lambda x: 3 * x,
     )
 
     assert transform(4) == dict(a=8, b=12)
+
+
+def test_update_dict():
+    transform = itemsetter(
+        dict(a=chained(op.itemgetter('i'), lambda x: 2 * x)),
+        b=chained(op.itemgetter('i'), lambda x: 3 * x),
+    )
+
+    assert transform(dict(i=4)) == dict(i=4, a=8, b=12)
 
 
 def test_frequencies():

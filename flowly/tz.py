@@ -26,12 +26,30 @@ class ShowImpl(object):
 show = ShowImpl()
 
 
-class build_dict(object):
-    def __init__(self, **assigments):
-        self.assigments = assigments
+class itemsetter(object):
+    def __init__(self, *prototypes, **assigments):
+        self.assigments = list(prototypes) + [dict(assigments)]
 
     def __call__(self, obj):
-        return {k: func(obj) for (k, func) in self.assigments.items()}
+        obj = obj.copy()
+        for assigment in self.assigments:
+            for k, func in assigment.items():
+                obj[k] = func(obj)
+
+        return obj
+
+
+class build_dict(object):
+    def __init__(self, *prototypes, **assigments):
+        self.assigments = list(prototypes) + [dict(assigments)]
+
+    def __call__(self, obj):
+        res = {}
+        for assigment in self.assigments:
+            for k, func in assigment.items():
+                res[k] = func(obj)
+
+        return res
 
 
 class chained(object):

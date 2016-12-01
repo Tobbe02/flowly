@@ -1,5 +1,6 @@
 from __future__ import print_function, division, absolute_import
 import itertools as it
+import operator as op
 
 from toolz import compose, concat, count, unique
 from toolz.curried import (
@@ -21,6 +22,7 @@ from flowly.tz import (
     build_dict,
     chained,
     frequencies,
+    itemsetter,
     reduction,
     seq,
 )
@@ -243,15 +245,35 @@ def test_flowly_apply_map_concat__example():
 def test_flowly_tz_build_dict():
     obj = db.from_sequence([1, 2, 3, 4], npartitions=3)
 
-    transform = build_dict(
-        max=max,
-        min=min,
-        sum=sum,
-    )
+    transform = build_dict(max=max, min=min, sum=sum)
+    actual = apply(obj, transform).compute()
+
+    assert actual == dict(min=1, max=4, sum=10)
+
+
+def test_flowly_tz_build_dict__alternative():
+    obj = db.from_sequence([1, 2, 3, 4], npartitions=3)
+
+    transform = build_dict(dict(max=max), dict(min=min), sum=sum)
 
     actual = apply(obj, transform).compute()
 
     assert actual == dict(min=1, max=4, sum=10)
+
+
+def test_flowly_tz_update_dict():
+    obj = dict(l=db.from_sequence([1, 2, 3, 4], npartitions=3))
+
+    transform = itemsetter(
+        # varargs are also allowed
+        dict(max=chained(op.itemgetter('l'), max)),
+        min=chained(op.itemgetter('l'), min),
+        sum=chained(op.itemgetter('l'), sum),
+    )
+
+    actual = apply(obj, transform).compute()
+
+    assert actual == dict(l=[1, 2, 3, 4], min=1, max=4, sum=10)
 
 
 def test_flowly_tz_reduce():

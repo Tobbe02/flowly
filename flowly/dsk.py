@@ -27,6 +27,7 @@ from .tz import (
     chained,
     frequencies,
     groupby,
+    itemsetter,
     reduction,
     seq,
 )
@@ -159,6 +160,11 @@ def _default_rules():
             apply=_build_dask_dict,
         ),
         adict(
+            name='flowly.tz.build_dict',
+            match=_match_isinstance(itemsetter),
+            apply=_update_dask_dict,
+        ),
+        adict(
             name='flowly.tz.chained',
             match=_match_isinstance(chained),
             apply=_apply__flowly__tz__chained,
@@ -248,9 +254,23 @@ def _apply_funcs(bag, funcs, rules):
 
 
 def _build_dask_dict(obj, transform, rules):
-    return dask_dict({
-        k: apply(obj, func, rules=rules) for (k, func) in transform.assigments.items()
-    })
+    result = {}
+
+    for assignment in transform.assigments:
+        for k, func in assignment.items():
+            result[k] = apply(obj, func, rules=rules)
+
+    return dask_dict(result)
+
+
+def _update_dask_dict(obj, transform, rules):
+    obj = obj.copy()
+
+    for assignment in transform.assigments:
+        for k, func in assignment.items():
+            obj[k] = apply(obj, func, rules=rules)
+
+    return dask_dict(obj)
 
 
 class adict(dict):
