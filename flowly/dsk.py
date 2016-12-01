@@ -40,20 +40,36 @@ def item_from_object(obj):
 
 
 # TODO: change argument order for currying
-def apply(bag, transform, rules=None):
+def apply(obj, transform, rules=None):
     """Translate the dask object via the given transformation.
+
+    :param Callable[Any,Any] transform:
+        the transformation to apply.
+
+    :param Any object:
+        the object to transform.
+
+    :param Optional[Iterable] rules:
+        an iterable containing rules to interpret the given transformation
+        on top of the bassed in object. If not given,
+        :func:`flowly.dsk.get_default_rules` will be called to retrieve the
+        rules to apply.
+
+        Each rule should be an object with two functions ``match`` and
+        ``apply``. The first matching rule will be applied and no subsequent
+        rule will be checked.
     """
     if rules is None:
-        rules = _default_rules()
+        rules = get_default_rules()
 
     for rule in rules:
         if rule.match(transform, rules):
-            return rule.apply(bag, transform, rules)
+            return rule.apply(obj, transform, rules)
 
     raise ValueError('cannot handle transform')
 
 
-def _default_rules():
+def get_default_rules():
     return [
         adict(
             name='builtins.sum', match=_match_equal(builtins.sum), apply=_methodcaller('sum'),

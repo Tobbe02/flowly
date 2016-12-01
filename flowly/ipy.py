@@ -4,6 +4,11 @@ from __future__ import print_function, division, absolute_import
 def add_toc():
     """Add a dynamic table of contents to an ipython notebook.
 
+    Any heading element (h1, h2, ...) in the DOM will add a link to the table of
+    contents. The easiest way to add the headers is via IPythons markdown cells.
+    Any edits or deletes of these cells will automatically be reflected in the
+    generated table of contents.
+
     Usage::
 
         from flowly.ipy import add_toc
@@ -83,7 +88,7 @@ js_source = '''
     function ensureStyleSection() {
         var style = $('#ipytoc-style');
 
-        if(style.length) {
+        if(style.length) {
             return style;
         }
 

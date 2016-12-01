@@ -8,7 +8,6 @@ import itertools as it
 
 
 class ShowImpl(object):
-    """Inspired by q"""
     def __init__(self, fmt='{!r}'):
         self.fmt = fmt
 
