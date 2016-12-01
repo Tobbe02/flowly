@@ -7,26 +7,47 @@ more complex objects.
 From functions calls to DAGs
 ----------------------------
 
-::
+Python offers a number of utility functions for lists, like ``map``,
+``filter``, and ``reduce``. For example say you wanted to sum the square of all
+even numbers between 0 and 99. In terms of said utility functions you can
+express this operation as::
 
     from functools import reduce
+    import math
+    import operator as op
 
-    reduce(sum, map(lambda x: 2 * x, [1, 2, 3, 4])
+    data = range(100)
+    math.sqrt(
+      reduce(op.add, map(lambda x: x ** 2.0,
+      filter(lambda x: x % 2 == 0, data)))
+    )
 
+These operations can be rewritten by using the functionality offered by
+``flowly`` and ``toolz`` into::
 
-::
-
-    from toolz.curried import map, reduce
+    from toolz.curried import filter, map, reduce
     from flowly.tz import chained
 
     transform = chained(
+        filter(lambda x: x % 2 == 0),
         map(lambda x: 2 * x),
-        reduce(sum),
+        reduce(op.add),
+        math.sqrt,
     )
 
-    transform([1, 2, 3, 4])
+    data = range(100)
+    transform(data)
 
-It is easy to compose ... Simplifies the flow of control...
+:func:``flowly.tz.chained`` represents the application of multiple functions
+one after the other and the curried namespace of ``toolz`` offers support bind
+the first argument of said utility functions without executing it immediately.
+
+The second variant arguably simplifies the structure of the program and has to
+additional benefit of being easier to compose. ``transform`` can be placed
+anywhere into an even large chain of transformations without having to be
+changed. Finally, the second variant separates definition of the operations from
+the execution. This way the operations can be reinterpreted as will be done
+below when considering parallel execution.
 
 While it may seem that this method only allows to write linear pipelines,
 general DAGs can easily built be using dictionaries. To simplify this pattern
@@ -84,6 +105,10 @@ DAG primitives are supported:
 - ``toolz.curried.mapcat``
 - ``toolz.curried.pluck``
 - ``toolz.curried.random_sample``
+- ``toolz.curried.remove``. Note, the ``intial`` keyword is currently
+    unsupported and ``reudce`` requires to collect all partitions on a
+    single worker, which may be inefficient. If possible, prefer
+    ``flowly.tz.reduction`` which enables additional optimizations.
 - ``toolz.curried.remove``
 - ``toolz.curried.take``
 - ``toolz.curried.topk``
@@ -92,7 +117,9 @@ DAG primitives are supported:
 - :func:`flowly.tz.build_dict`
 - :func:`flowly.tz.chained`
 - :func:`flowly.tz.frequencies`
+- :func:`flowly.tz.groupby`
 - :func:`flowly.tz.itemsetter`
+- :func:`flowly.tz.reduceby`
 - :func:`flowly.tz.reduction`
 - :func:`flowly.tz.seq`
 
@@ -116,7 +143,11 @@ Buildings Blocks
 
 .. autofunction:: flowly.tz.frequencies
 
+.. autofunction:: flowly.tz.groupby
+
 .. autofunction:: flowly.tz.itemsetter
+
+.. autofunction:: flowly.tz.reduceby
 
 .. autofunction:: flowly.tz.reduction
 
