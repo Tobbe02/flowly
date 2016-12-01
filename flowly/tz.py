@@ -146,6 +146,19 @@ class groupby(object):
         return list(result.items())
 
 
+# TODO: add support for initial value
+class reduceby(object):
+    def __init__(self, key, binop):
+        self.key = key
+        self.binop = binop
+
+    def __call__(self, seq):
+        return [
+            (key, reduce(self.binop, subseq))
+            for (key, subseq) in groupby(self.key)(seq)
+        ]
+
+
 class reduction(object):
     def __init__(self, perpartition, aggregate, split_every=None):
         self.perpartition = perpartition

@@ -9,6 +9,7 @@ from toolz.curried import (
     mapcat,
     pluck,
     random_sample,
+    reduce,
     remove,
     take,
     topk,
@@ -23,7 +24,9 @@ from flowly.tz import (
     build_dict,
     chained,
     frequencies,
+    groupby,
     itemsetter,
+    reduceby,
     reduction,
     seq,
 )
@@ -165,6 +168,13 @@ def test_toolz_filter():
     assert actual.compute() == [0, 2, 4, 6, 8]
 
 
+def test_toolz_reduce():
+    obj = obj = db.from_sequence(range(100), npartitions=5)
+    actual = apply(reduce(op.add), obj)
+
+    assert actual.compute() == sum(range(100))
+
+
 def test_toolz_remove():
     obj = db.from_sequence(range(10), npartitions=3)
     actual = apply(remove(lambda x: x % 2 == 1), obj)
@@ -268,6 +278,18 @@ def test_flowly_tz_build_dict__alternative():
     assert actual == dict(min=1, max=4, sum=10)
 
 
+def test_flowly_tz_groupby():
+    transform = groupby(lambda i: i % 2)
+    data = db.from_sequence([1, 2, 3, 4, 5, 6, 7], npartitions=3)
+    result = apply(transform, data).compute()
+    actual = sorted(
+        (key, sorted(values)) for (key, values) in result
+    )
+    expected = sorted([(1, [1, 3, 5, 7]), (0, [2, 4, 6])])
+
+    assert actual == expected
+
+
 def test_flowly_tz_update_dict():
     obj = dict(l=db.from_sequence([1, 2, 3, 4], npartitions=3))
 
@@ -281,6 +303,18 @@ def test_flowly_tz_update_dict():
     actual = apply(transform, obj).compute()
 
     assert actual == dict(l=[1, 2, 3, 4], min=1, max=4, sum=10)
+
+
+def test_flowly_tz_reduceby():
+    seq = db.from_sequence([1, 2, 3, 4, 5, 6, 7], npartitions=3)
+    transform = reduceby(lambda i: i % 2, lambda a, b: a + b)
+    actual = sorted(apply(transform, seq).compute())
+    expected = sorted([
+        (1, sum([1, 3, 5, 7])),
+        (0, sum([2, 4, 6])),
+    ])
+
+    assert actual == expected
 
 
 def test_flowly_tz_reduce():
@@ -328,3 +362,23 @@ def test_generic_callable():
 def test_dsk_dict__copy():
     d = dask_dict(a=delayed(42), b=delayed(13)).copy().compute()
     assert d == dict(a=42, b=13)
+
+
+def test_toolz_groupby__is_not_supported():
+    from toolz.curried import groupby
+
+    transform = groupby(lambda i: i % 2)
+    data = db.from_sequence([1, 2, 3, 4, 5, 6, 7], npartitions=3)
+
+    with pytest.raises(ValueError):
+        apply(transform, data).compute()
+
+
+def test_toolz_reduceby__is_not_supported():
+    from toolz.curried import reduceby
+
+    transform = reduceby(lambda i: i % 2, lambda a, b: a + b)
+    data = db.from_sequence([1, 2, 3, 4, 5, 6, 7], npartitions=3)
+
+    with pytest.raises(ValueError):
+        apply(transform, data).compute()

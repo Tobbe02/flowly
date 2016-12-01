@@ -14,6 +14,7 @@ from flowly.tz import (
     itemsetter,
     optional,
     raise_,
+    reduceby,
     reduction,
     seq,
     show,
@@ -87,6 +88,18 @@ def test_groupby():
     transform = groupby(lambda i: i % 2)
     actual = sorted(transform([1, 2, 3, 4, 5, 6, 7]))
     expected = sorted([(1, [1, 3, 5, 7]), (0, [2, 4, 6])])
+
+    assert actual == expected
+
+
+def test_reduceby():
+    seq = [1, 2, 3, 4, 5, 6, 7]
+    transform = reduceby(lambda i: i % 2, lambda a, b: a + b)
+    actual = sorted(transform(seq))
+    expected = sorted([
+        (1, sum([1, 3, 5, 7])),
+        (0, sum([2, 4, 6])),
+    ])
 
     assert actual == expected
 

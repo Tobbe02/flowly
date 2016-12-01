@@ -2,6 +2,7 @@
 """
 from __future__ import print_function, division, absolute_import
 
+import functools as ft
 import itertools as it
 import logging
 
@@ -21,6 +22,7 @@ from toolz import (
     count,
     merge,
     partition_all,
+    reduce,
 )
 
 from .tz import (
@@ -31,6 +33,8 @@ from .tz import (
     frequencies,
     groupby,
     itemsetter,
+    raise_,
+    reduceby,
     reduction,
     seq,
 )
@@ -141,6 +145,14 @@ def get_default_rules():
             apply=lambda bag, transform, rules: bag.random_sample(*transform.args, **transform.keywords),
         ),
         adict(
+            name='toolz.curried.reduce',
+            match=_match_curried(ft.reduce),
+            apply=lambda bag, transform, rules: bag.reduction(
+                lambda i: i,
+                lambda partitions: reduce(transform.args[0], it.chain.from_iterable(partitions)),
+            )
+        ),
+        adict(
             name='toolz.curried.remove',
             match=_match_curried(toolz.remove),
             apply=lambda bag, transform, rules: bag.remove(*transform.args, **transform.keywords),
@@ -157,6 +169,16 @@ def get_default_rules():
             name='toolz.curried.topk',
             match=_match_curried(toolz.topk),
             apply=lambda bag, transform, rules: bag.topk(*transform.args, **transform.keywords),
+        ),
+        adict(
+            name='toolz.curried.groupby',
+            match=_match_curried(toolz.groupby),
+            apply=lambda *args, **kwargs: raise_(ValueError, 'use flowly.tz.groupby')
+        ),
+        adict(
+            name='toolz.curried.reduceby',
+            match=_match_curried(toolz.reduceby),
+            apply=lambda *args, **kwargs: raise_(ValueError, 'use flowly.tz.reduceby')
         ),
         adict(
             name='toolz.unique',
@@ -200,6 +222,15 @@ def get_default_rules():
             apply=lambda bag, transform, rules: bag.groupby(transform.key),
         ),
         adict(
+            name='flowly.tz.reduceby',
+            match=_match_isinstance(reduceby),
+            apply=lambda bag, transform, rules: (
+                bag
+                .groupby(transform.key)
+                .map(lambda (k, v): (k, reduce(transform.binop, v)))
+            ),
+        ),
+        adict(
             name='flowly.tz.reduction',
             match=_match_isinstance(reduction),
             apply=lambda bag, transform, rules: bag.reduction(
@@ -214,6 +245,7 @@ def get_default_rules():
             ])
         ),
         # TODO: let any curried callable fallback to the callable itself, if not args were given
+        # TODO: add option to skip arbitrary callables and add marker functions to annotate them
         adict(
             name='callable',
             match=lambda bag, transform, rules: callable(transform),
