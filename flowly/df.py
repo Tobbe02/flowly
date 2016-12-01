@@ -8,6 +8,7 @@ from ._interface import predicate, unary
 
 __all__ = [
     'filter',
+    'slice',
 
     'drop_index',
     'drop_columns',
@@ -48,6 +49,39 @@ class filter(object):
 
         mask = ft.reduce(op.and_, (predicate(expr)(df) for expr in self.exprs))
         return df[mask]
+
+
+class slice_generator():
+    def __init__(self, loc_attr):
+        self.loc_attr = loc_attr
+
+    def __call__(self, key):
+        return bound_slice(self.loc_attr, key)
+
+    def __getitem__(self, key):
+        return bound_slice(self.loc_attr, key)
+
+
+slice = slice_generator('loc')
+
+islice = slice_generator('iloc')
+
+
+class bound_slice(object):
+    def __init__(self, loc_attr, key):
+        self.loc_attr = loc_attr
+        self.key = key
+
+    def __call__(self, df):
+        return getattr(df, self.loc_attr)[self.key]
+
+
+class summarise(object):
+    def __init__(self, *exprs):
+        raise NotImplementedError()
+
+    def __call__(self):
+        raise NotImplementedError()
 
 
 def drop_index(df):

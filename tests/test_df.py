@@ -63,6 +63,46 @@ def test_filter__pass_throught():
     assert pipe(df, fdf.filter()) is df
 
 
+def test_slice():
+    df = pd.DataFrame({
+        'a': [1, 2, 3, 4],
+    })
+
+    actual = pipe(df, fdf.slice[1:2])
+    expected = pd.DataFrame({'a': [2, 3]}, index=[1, 2])
+    pdt.assert_frame_equal(actual, expected)
+
+
+def test_slice__call():
+    df = pd.DataFrame({
+        'a': [1, 2, 3, 4],
+    })
+
+    actual = pipe(df, fdf.slice([1, 2]))
+    expected = pd.DataFrame({'a': [2, 3]}, index=[1, 2])
+    pdt.assert_frame_equal(actual, expected)
+
+
+def test_islice():
+    df = pd.DataFrame({
+        'a': [1, 2, 3, 4],
+    }, index=[11, 12, 13, 14])
+
+    actual = pipe(df, fdf.islice[1:3])
+    expected = pd.DataFrame({'a': [2, 3]}, index=[12, 13])
+    pdt.assert_frame_equal(actual, expected)
+
+
+def test_islice__call():
+    df = pd.DataFrame({
+        'a': [1, 2, 3, 4],
+    }, index=[11, 12, 13, 14])
+
+    actual = pipe(df, fdf.islice([1, 2]))
+    expected = pd.DataFrame({'a': [2, 3]}, index=[12, 13])
+    pdt.assert_frame_equal(actual, expected)
+
+
 def test_drop_index():
     df = pd.DataFrame({'a': [1, 2, 3, 4]}, index=[4, 3, 2, 1])
     actual = pipe(df, fdf.drop_index)
