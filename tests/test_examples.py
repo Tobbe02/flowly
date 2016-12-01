@@ -10,7 +10,7 @@ from flowly.tz import apply_concat, chained, seq
 
 executors = [
     lambda graph, obj: graph(obj),
-    lambda graph, obj: apply(obj, graph).compute(),
+    lambda graph, obj: apply(graph, obj).compute(),
 ]
 
 

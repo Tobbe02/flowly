@@ -1,6 +1,9 @@
 """Execute transformations via dask.
 """
+from __future__ import print_function, division, absolute_import
+
 import itertools as it
+import logging
 
 try:
     import __builtins__ as builtins
@@ -32,6 +35,7 @@ from .tz import (
     seq,
 )
 
+_logger = logging.getLogger(__name__)
 id_sequence = it.count()
 
 
@@ -39,8 +43,7 @@ def item_from_object(obj):
     return db.Item.from_delayed(delayed(obj))
 
 
-# TODO: change argument order for currying
-def apply(obj, transform, rules=None):
+def apply(transform, obj, rules=None):
     """Translate the dask object via the given transformation.
 
     :param Callable[Any,Any] transform:
@@ -63,8 +66,13 @@ def apply(obj, transform, rules=None):
         rules = get_default_rules()
 
     for rule in rules:
-        if rule.match(transform, rules):
-            return rule.apply(obj, transform, rules)
+        try:
+            if rule.match(obj, transform, rules):
+                return rule.apply(obj, transform, rules)
+
+        except:
+            print('error for rule %s', rule)
+            raise
 
     raise ValueError('cannot handle transform')
 
@@ -91,12 +99,12 @@ def get_default_rules():
         ),
         adict(
             name='toolz.concat',
-            match=lambda transform, rules: transform == toolz.concat,
+            match=_match_equal(toolz.concat),
             apply=lambda bag, transform, rules: bag.concat(),
         ),
         adict(
             name='toolz.compose',
-            match=lambda transform, rules: isinstance(transform, toolz.functoolz.Compose),
+            match=_match_isinstance(toolz.functoolz.Compose),
             apply=_apply__toolz__compose,
         ),
         adict(
@@ -157,7 +165,7 @@ def get_default_rules():
         ),
         adict(
             name='itertools.chain.from_iterable',
-            match=lambda transform, rules: transform == it.chain.from_iterable,
+            match=_match_equal(it.chain.from_iterable),
             apply=lambda bag, transform, rules: bag.concat(),
         ),
         adict(
@@ -208,22 +216,22 @@ def get_default_rules():
         # TODO: let any curried callable fallback to the callable itself, if not args were given
         adict(
             name='callable',
-            match=lambda transform, rules: callable(transform),
+            match=lambda bag, transform, rules: callable(transform),
             apply=lambda bag, transform, rules: transform(bag),
         )
     ]
 
 
 def _match_equal(obj):
-    return lambda transform, rules: transform == obj
+    return lambda bag, transform, rules: transform == obj
 
 
 def _match_isinstance(kls):
-    return lambda transform, rules: isinstance(transform, kls)
+    return lambda bag, transform, rules: isinstance(transform, kls)
 
 
 def _match_curried(func):
-    return lambda transform, rules: (
+    return lambda bag, transform, rules: (
         isinstance(transform, toolz.curry) and (transform.func is func)
     )
 
@@ -238,7 +246,7 @@ def _apply__toolz__compose(bag, transform, rules):
 
 
 def _apply__flowly__tz__apply_concat(bag, transform, rules):
-    return db.concat([apply(bag, func, rules=rules) for func in transform.funcs])
+    return db.concat([apply(func, bag, rules=rules) for func in transform.funcs])
 
 
 def _apply__flowly__tz__apply_map_concat(bag, transform, rules):
@@ -264,7 +272,7 @@ def _apply__flowly__tz__chained(bag, transform, rules):
 
 def _apply_funcs(bag, funcs, rules):
     for func in funcs:
-        bag = apply(bag, func, rules=rules)
+        bag = apply(func, bag, rules=rules)
 
     return bag
 
@@ -274,7 +282,7 @@ def _build_dask_dict(obj, transform, rules):
 
     for assignment in transform.assigments:
         for k, func in assignment.items():
-            result[k] = apply(obj, func, rules=rules)
+            result[k] = apply(func, obj, rules=rules)
 
     return dask_dict(result)
 
@@ -284,7 +292,7 @@ def _update_dask_dict(obj, transform, rules):
 
     for assignment in transform.assigments:
         for k, func in assignment.items():
-            obj[k] = apply(obj, func, rules=rules)
+            obj[k] = apply(func, obj, rules=rules)
 
     return dask_dict(obj)
 
