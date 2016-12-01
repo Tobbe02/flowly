@@ -110,10 +110,16 @@ def test_seq():
 
 
 def test_optional__example():
-    assert optional(None).or_else(lambda: 5).get() == 5
-    assert optional(3).or_else(lambda: 5).get() == 3
+    assert optional(None).or_else(5).get() == 5
+    assert optional(3).or_else(5).get() == 3
     assert optional(3).get() == 3
-    assert +optional(None).or_else(lambda: 5) == 5
+    assert +optional(None).or_else(5) == 5
+
+    assert +optional(3).transform(lambda a, b: a * b, b=2).get() == 6
+    assert +optional(None).transform(lambda a, b: a + b, b=2).or_else(42).get() == 42
+
+    assert +optional(3).or_else_call(lambda: 42).get() == 3
+    assert +optional(None).or_else_call(lambda: 42).get() == 42
 
 
 def test_optional__get_raises():

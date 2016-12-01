@@ -163,10 +163,24 @@ def seq(*items):
 
 
 def optional(val):
+    """Wrap any value with the optional moand.
+
+    Usage::
+
+        val = +optional(val).or_else(default_value).get()
+
+        val = +optional(val).or_else_call(expensive_function, arg1, arg2).get()
+    """
     return Just(val) if val is not None else Nothing()
 
 
 def try_call(func, *args, **kwargs):
+    """Try to call the function and return a Try monad.
+
+    Usage::
+
+        result = +try_call(func, arg1, arg2).recover(altnative_operation).get()
+    """
     try:
         result = func(*args, **kwargs)
 
@@ -197,21 +211,33 @@ class Nothing(_Maybe):
     def __init__(self):
         pass
 
+    def transform(self, func, *args, **kwargs):
+        return self
+
     def get(self):
         raise ValueError()
 
-    def or_else(self, factory):
-        return optional(factory())
+    def or_else(self, val):
+        return optional(val)
+
+    def or_else_call(self, func, *args, **kwargs):
+        return optional(func(*args, **kwargs))
 
 
 class Just(_Maybe):
     def __init__(self, value):
         self.value = value
 
+    def transform(self, func, *args, **kwargs):
+        return optional(func(self.value, *args, **kwargs))
+
     def get(self):
         return self.value
 
-    def or_else(self, factory):
+    def or_else(self, val):
+        return self
+
+    def or_else_call(self, func, *args, **kwargs):
         return self
 
 
