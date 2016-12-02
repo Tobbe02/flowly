@@ -6,6 +6,7 @@ try:
 except ImportError:
     import builtins
 
+import itertools as it
 import math
 import operator as op
 
@@ -13,7 +14,7 @@ import dask.bag as db
 import pytest
 
 from flowly.dsk import apply
-from flowly.tz import apply_concat, chained, seq
+from flowly.tz import apply_concat, apply_map_concat, chained, seq
 
 executors = [
     lambda graph, obj: graph(obj),
@@ -23,6 +24,7 @@ executors = [
 
 @pytest.mark.parametrize('executor', executors)
 def test_dags(executor):
+    # TODO: why does this work? Does iteration over a bag collect the items?
     # build dags by using itemgetter and dicts
     scope = dict(
         a=db.from_sequence(range(0, 10), npartitions=3),
@@ -49,6 +51,29 @@ def test_dags(executor):
         sum(range(0, 10)),
         sum(range(0, 30)),
     ])
+
+
+def test_apply_map_concat_example():
+    obj = db.from_sequence([
+        dict(
+            group=group,
+            time=t,
+            data=np.random.uniform(0 1.0 - group * 0.5, size=200),
+        )
+        for group, t in it.product([0, 1, 2], range(20))
+    ], npartitions=10)
+
+    analysis = chained(
+        filter(lambda d: d['group'] != 2),
+        apply_map_concat([
+            chained([
+                bootstrap,
+                summarize,
+            ])
+            for _ in range(100)
+        ]),
+
+    )
 
 
 def test_pipeline_example():

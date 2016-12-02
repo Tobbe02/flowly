@@ -36,6 +36,7 @@ from .tz import (
     raise_,
     reduceby,
     reduction,
+    reductionby,
     seq,
 )
 
@@ -44,7 +45,17 @@ id_sequence = it.count()
 
 
 def item_from_object(obj):
+    """Helper create a :class:`dask.bag.Item` from a python object.
+    """
     return db.Item.from_delayed(delayed(obj))
+
+
+def apply_to_local(transform, obj, npartitions=None, get=None, rules=None):
+    """Distribute obj, then apply the transform, finally compute the result.
+    """
+    obj = db.from_sequence(obj, npartitions=npartitions)
+    obj = apply(transform, obj, rules=rules)
+    return obj.compute(get=get)
 
 
 def apply(transform, obj, rules=None):
@@ -238,6 +249,11 @@ def get_default_rules():
             ),
         ),
         adict(
+            name='flowly',
+            match=_match_isinstance(reductionby),
+            apply=_apply_reductionby,
+        ),
+        adict(
             name='flowly.tz.seq',
             match=_match_equal(seq),
             apply=lambda item, transform, rules: db.from_delayed([
@@ -327,6 +343,18 @@ def _update_dask_dict(obj, transform, rules):
             obj[k] = apply(func, obj, rules=rules)
 
     return dask_dict(obj)
+
+
+def _apply_reductionby(obj, transform, rules):
+    if transform.perpartition is not None:
+        raise ValueError("reductionby does not support perpartition currently")
+
+    impl = chained(
+        groupby(transform.key),
+        toolz.curried.map(lambda t: (t[0], transform.aggregate(t[1]))),
+    )
+
+    return apply(impl, obj, rules=rules)
 
 
 class adict(dict):

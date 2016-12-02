@@ -159,6 +159,7 @@ class reduceby(object):
         ]
 
 
+# TODO: handle perpartition=None, i.e., reduction(None, sum) = reduction(sum, sum)
 class reduction(object):
     def __init__(self, perpartition, aggregate, split_every=None):
         self.perpartition = perpartition
@@ -169,8 +170,39 @@ class reduction(object):
         return self.aggregate([self.perpartition(obj)])
 
 
+class reductionby(object):
+    def __init__(self, key, perpartition, aggregate, split_every=None):
+        self.key = key
+        self.perpartition = perpartition
+        self.aggregate = aggregate
+        self.split_every = split_every
+
+    def __call__(self, obj):
+        grouped = groupby(self.key)(obj)
+        if self.perpartition is None:
+            return [
+                (key, self.aggregate(group))
+                for (key, group) in grouped
+            ]
+
+        else:
+            return [
+                (key, self.aggregate([self.perpartition(group)]))
+                for (key, group) in grouped
+            ]
+
+
 def seq(*items):
     """Turn one or multiple values into a list.
+
+    Examples::
+
+        >>> seq(1)
+        [1]
+        >>> seq(1, 2, 3)
+        [1, 2, 3]
+        >>> seq([1], [2])
+        [[1], [2]]
     """
     return list(items)
 
