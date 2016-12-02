@@ -52,6 +52,31 @@ class build_dict(object):
 
 
 class chained(object):
+    """Represent the composition of functions.
+
+    When the resulting object is called with a single argument, the passed
+    object is transformed by passing it through all given functions.
+    For example::
+
+        a = chained(
+            math.sqrt,
+            math.log,
+            math.cos,
+        )(5.0)
+
+    is equivalent to::
+
+        a = 5.0
+        a = math.sqrt(a)
+        a = math.log(a)
+        a = math.cos(a)
+
+    Different chains can be composed via ``+``.
+    For example, the chain above can be written as::
+
+        chained(math.sqrt, math.log) + chained(math.cos)
+
+    """
     def __init__(self, *funcs):
         self.funcs = funcs
 
@@ -124,7 +149,7 @@ class apply_map_concat(_apply_concat_base):
 
 
 def frequencies(obj):
-    """In contrast to ``toolz.frequencies`` return ``(item, count)`` pairs.
+    """In contrast to ``toolz.frequencies``, return ``(item, count)`` pairs.
     """
     result = {}
 
@@ -135,6 +160,8 @@ def frequencies(obj):
 
 
 class groupby(object):
+    """In contrast to ``toolz.groupby``, return ``(item, count)`` pairs.
+    """
     def __init__(self, key):
         self.key = key
 

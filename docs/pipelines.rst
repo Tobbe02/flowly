@@ -1,16 +1,17 @@
-Writing Data Pipelines
-======================
+Building Data Pipelines
+=======================
 
 Often data processing involves multiple transformations of data into more and
 more complex objects.
 
-From functions calls to DAGs
-----------------------------
+From function calls to graphs
+-----------------------------
 
 Python offers a number of utility functions for lists, like ``map``,
-``filter``, and ``reduce``. For example say you wanted to sum the square of all
-even numbers between 0 and 99. In terms of said utility functions you can
-express this operation as::
+``filter``, and ``reduce``.
+For example say you wanted to compute the square root  of the sum the square of
+all even numbers between 0 and 99.
+In terms of said utility functions you can express this operation as::
 
     from functools import reduce
     import math
@@ -38,7 +39,7 @@ These operations can be rewritten by using the functionality offered by
     data = range(100)
     transform(data)
 
-:func:``flowly.tz.chained`` represents the application of multiple functions
+:func:`flowly.tz.chained` represents the application of multiple functions
 one after the other and the curried namespace of ``toolz`` offers support bind
 the first argument of said utility functions without executing it immediately.
 
@@ -60,13 +61,17 @@ Consider the following example::
 
     TODO: add an example
 
+Finally, flowly offser support for both data and operation parallelism via its
+:func:`flowly.apply_map_concat` function. It applies a list of functions over a
+list of objects in parallel and concatenate the results into a single, large
+iterable.
 
 Parallel execution
 ------------------
 
 Flowly comes with builtin support for dask for many existing elements of
 computation graphs. Applying the transformation to a ``dask.bag.Bag`` is a
-simple matter of calling ``flowly.dsk.apply``:
+simple matter of calling ``flowly.dsk.apply``::
 
     import dask.bag as db
     from flowly.dsk import apply
@@ -90,28 +95,30 @@ The DAG primitives that are understood can easily be adapted by specifying the
 ``rules`` argument to :func:`flowly.dsk.apply`. Out of the box, the following
 DAG primitives are supported:
 
-- ``builtins.any``
-- ``builtins.all``
-- ``builtins.min``
-- ``builtins.max``
-- ``builtins.sum``
-- ``itertools.chain.from_iterable``
-- ``toolz.compose``
-- ``toolz.concat``
-- ``toolz.count``
-- ``toolz.unique`` (without key function)
-- ``toolz.curried.filter``
-- ``toolz.curried.map``
-- ``toolz.curried.mapcat``
-- ``toolz.curried.pluck``
-- ``toolz.curried.random_sample``
-- ``toolz.curried.remove``. Note, the ``intial`` keyword is currently
-    unsupported and ``reudce`` requires to collect all partitions on a
-    single worker, which may be inefficient. If possible, prefer
-    ``flowly.tz.reduction`` which enables additional optimizations.
-- ``toolz.curried.remove``
-- ``toolz.curried.take``
-- ``toolz.curried.topk``
+- :func:`builtins.any()<any>`
+- :func:`builtins.all()<all>`
+- :func:`builtins.min()<min>`
+- :func:`builtins.max()<max>`
+- :func:`builtins.sum()<sum>`
+- :func:`itertools.chain.from_iterable()<itertools.chain>`
+- :func:`toolz.compose()<toolz.functoolz.compose>`
+- :func:`toolz.concat()<toolz.itertoolz.concat>`
+- :func:`toolz.count()<toolz.itertoolz.count>`
+- :func:`toolz.unique()<toolz.itertoolz.unique>` (without key function)
+- :func:`toolz.curried.filter()<filter>`
+- :func:`toolz.curried.map()<map>`
+- :func:`toolz.curried.mapcat()<toolz.itertoolz.mapcat>`
+- :func:`toolz.curried.pluck()<toolz.itertoolz.pluck>`
+- :func:`toolz.curried.random_sample()<toolz.itertoolz.random_sample>`
+- :func:`toolz.curried.reduce()<functools.reduce>`.
+  The ``intial`` keyword is currently unsupported and ``reudce``
+  requires to collect all partitions on a single worker, which may be
+  inefficient.
+  If possible, prefer :func:`flowly.tz.reduction` which enables additional
+  optimizations.
+- :func:`toolz.curried.remove()<toolz.itertoolz.remove>`
+- :func:`toolz.curried.take()<toolz.itertoolz.take>`
+- :func:`toolz.curried.topk()<toolz.itertoolz.topk>`
 - :func:`flowly.tz.apply_concat`
 - :func:`flowly.tz.apply_map_concat`
 - :func:`flowly.tz.build_dict`

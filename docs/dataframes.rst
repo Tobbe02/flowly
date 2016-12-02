@@ -7,7 +7,7 @@ Overview
 dplyr verbs:
 
 - :func:`flowly.df.filter`
-- :obj:`flowly.df.slice` and :obj:`flowly.df.islice`
+- :data:`flowly.df.slice` and :data:`flowly.df.islice`
 
 Other helpers:
 
@@ -29,7 +29,9 @@ Reference
 
 .. autofunction:: flowly.df.filter
 
-.. object:: flowly.df.slice, flowly.df.islice
+.. data:: flowly.df.slice
+
+.. data:: flowly.df.islice
 
     .. note::
 
