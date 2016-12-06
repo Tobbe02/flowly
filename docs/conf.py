@@ -37,6 +37,7 @@ extensions = [
 intersphinx_mapping = {
     'python': ('https://docs.python.org/3.4', None),
     'tooz': ('https://toolz.readthedocs.io/en/latest/', None),
+    'dask': ('http://dask.pydata.org/en/latest/', None),
 }
 
 

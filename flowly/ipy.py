@@ -52,7 +52,7 @@ js_source = '''
         style.append('}');
 
         style.append('#ipytoc:hover {');
-        style.append('  width: 15em;');
+        style.append('  width: 30em;');
         style.append('  height: auto;');
         style.append('  min-height: 20em;');
         style.append('  background-color: #fff;');

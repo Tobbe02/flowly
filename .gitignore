@@ -6,4 +6,5 @@ __pycache__/
 /.coverage
 /tmp/
 /flowly.egg-info/
+/log
 

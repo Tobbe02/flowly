@@ -1,5 +1,7 @@
 from __future__ import print_function, division, absolute_import
 
+import pandas as pd
+
 import functools as ft
 import operator as op
 
@@ -7,6 +9,7 @@ from ._base import is_flowly_expr
 from ._interface import predicate, unary
 
 __all__ = [
+    'as_frame',
     'filter',
     'slice',
 
@@ -36,7 +39,7 @@ class filter(object):
         # callables
         pipe(
             df,
-            fdf.filter(lambda df: (df['a'] == df['b']) & (this['a'] % 2 == 0))
+            fdf.filter(lambda df: (df['a'] == df['b']) & (df['a'] % 2 == 0))
         )
 
     """
@@ -133,6 +136,12 @@ class _helper_get_column_names(object):
 
     def __getitem__(self, name):
         return name
+
+
+def as_frame(**kwargs):
+    """Helper function to simplify code generating dataframes.
+    """
+    return pd.DataFrame(kwargs)
 
 
 # class _assign_base(object):

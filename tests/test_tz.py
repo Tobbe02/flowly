@@ -12,6 +12,10 @@ from flowly.tz import (
     frequencies,
     groupby,
     itemsetter,
+    kv_keymap,
+    kv_reduceby,
+    kv_reductionby,
+    kv_valmap,
     optional,
     raise_,
     reduceby,
@@ -95,6 +99,63 @@ def test_groupby():
 def test_reduceby():
     seq = [1, 2, 3, 4, 5, 6, 7]
     transform = reduceby(lambda i: i % 2, lambda a, b: a + b)
+    actual = sorted(transform(seq))
+    expected = sorted([
+        (1, sum([1, 3, 5, 7])),
+        (0, sum([2, 4, 6])),
+    ])
+
+    assert actual == expected
+
+
+def test_kv_keymap():
+    seq = [(i % 2, i) for i in [1, 2, 3, 4]]
+    transform = kv_keymap(lambda k: 10 * k)
+    actual = sorted(transform(seq))
+    expected = sorted([(10, 1), (0, 2), (10, 3), (0, 4)])
+
+    assert actual == expected
+
+
+def test_kv_reduceby():
+    seq = [(i % 2, i) for i in [1, 2, 3, 4, 5, 6, 7]]
+    transform = kv_reduceby(lambda a, b: a + b)
+    actual = sorted(transform(seq))
+    expected = sorted([
+        (1, sum([1, 3, 5, 7])),
+        (0, sum([2, 4, 6])),
+    ])
+
+    assert actual == expected
+
+
+def test_kv_valmap():
+    seq = [(i % 2, i) for i in [1, 2, 3, 4]]
+    transform = kv_valmap(lambda k: 10 * k)
+    actual = sorted(transform(seq))
+    expected = sorted([(1, 10), (0, 20), (1, 30), (0, 40)])
+
+    assert actual == expected
+
+
+def test_kv_reductionby__no_perpartition():
+    seq = [(i % 2, i) for i in [1, 2, 3, 4, 5, 6, 7]]
+    transform = kv_reductionby(None, sum)
+    actual = sorted(transform(seq))
+    expected = sorted([
+        (1, sum([1, 3, 5, 7])),
+        (0, sum([2, 4, 6])),
+    ])
+
+    assert actual == expected
+
+
+def test_kv_reductionby__with_perpartition():
+    seq = [(i % 2, i) for i in [1, 2, 3, 4, 5, 6, 7]]
+    transform = kv_reductionby(
+        lambda x: x,
+        lambda parts: sum(i for part in parts for i in part),
+    )
     actual = sorted(transform(seq))
     expected = sorted([
         (1, sum([1, 3, 5, 7])),
