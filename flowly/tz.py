@@ -27,9 +27,37 @@ class ShowImpl(object):
 show = ShowImpl()
 
 
+def printf(fmt, *args, **kwargs):
+    """Wrapper around print / str.format for interactive use.
+    """
+    print(fmt.format(*args, **kwargs))
+
+
 class itemsetter(object):
+    """Set key/values of mapping where the values are created by callables.
+
+    :param Dict[Any,Callable[Any,Any]] prototypes:
+        each prototype is a mapping from keys to callables.
+
+    :param Callable[Any,Any] assigments:
+        all assignment are converted into a new prototype appended to the
+        existing ones.
+
+    For example::
+
+        >>> import operator as op
+        >>> from flowly.tz import chained, itemsetter
+        >>> transform = itemsetter(
+        ...     sum=chained(op.itemgetter('values'), sum),
+        ...     max=chained(op.itemgetter('values'), max),
+        ...     min=chained(op.itemgetter('values'), min),
+        ... )
+        >>> obj = {'values': [1, 2, 3, 4, 5]}
+        >>> transform(obj)
+        ... {'values': [1, 2, 3, 4, 5], 'sum': 15, 'max': 5, 'min': 1}
+    """
     def __init__(self, *prototypes, **assigments):
-        self.assigments = list(prototypes) + [dict(assigments)]
+        self.assigments = list(prototypes) + [assigments]
 
     def __call__(self, obj):
         obj = obj.copy()
@@ -41,8 +69,31 @@ class itemsetter(object):
 
 
 class build_dict(object):
+    """Build a mapping where the values are created by callables.
+
+    :param Dict[Any,Callable[Any,Any]] prototypes:
+        each prototype is a mapping from keys to callables.
+
+    :param Callable[Any,Any] assigments:
+        all assignment are converted into a new prototype appended to the
+        existing ones.
+
+
+    For example::
+
+        >>> import operator as op
+        >>> from flowly.tz import chained, build_dict
+        >>> transform = build_dict(
+        ...     sum=sum,
+        ...     max=max,
+        ...     min=min,
+        ...     values=lamba x: x,
+        ... )
+        >>> transform([1, 2, 3, 4, 5])
+        ... {'values': [1, 2, 3, 4, 5], 'sum': 15, 'max': 5, 'min': 1}
+    """
     def __init__(self, *prototypes, **assigments):
-        self.assigments = list(prototypes) + [dict(assigments)]
+        self.assigments = list(prototypes) + [assigments]
 
     def __call__(self, obj):
         res = {}
@@ -126,22 +177,45 @@ class apply_concat(_apply_concat_base):
 
 
 class apply_map_concat(_apply_concat_base):
-    """TODO: describe, decide which way to order
+    """Apply different functions to each item and concatenate all results.
 
     Equivalent to::
 
         it.chain.from_iterable((func(item) for func in funcs) for item in obj)
 
-    Each function should map from a single item to a transformed item. The
-    result will be the concatenation of the transformed items of all functions.
-
-    Note: the order is not guaranteed.
+    Each function should map from a single item to a transformed item.
+    The result will be the concatenation of the transformed items of all
+    functions in arbitrary order.
+    Often it is useful to use non-pure functions, i.e., sampling procedures.
+    Per default, dask will remove duplicate invocations of non-pure functions.
+    flowly takes care to pass a unique component for each job and thereby will
+    ensure that identical invocations of the function will not be skipped by
+    dask when using :func:`flowly.dsk.apply`.
 
     :param Iterable[Callable[Any,...]] funcs:
         The functions to apply. Needs to be finite.
 
     :param Optional[int] chunks:
         A hint to parallel executors about the desired chunk size.
+
+
+    For example, consider the application of some subsampling procedure with a
+    reduction step::
+
+        >>> from flowly.tz import apply_map_concat
+        >>> from flowly.dsk import apply
+        >>> transform = apply_map_concat([
+        ...     chained(
+        ...         subsample,
+        ...         reduction
+        ...     )
+        ...     for _ in range(1000)
+        ... ])
+        >>> apply(transform, bag_of_objects)
+
+    These steps would apply the subsample and reduction steps 1000 times to each
+    object in the passed bag in parallel.
+    The end result will be a list of the reduction results.
     """
     def __call__(self, obj):
         return it.chain.from_iterable(

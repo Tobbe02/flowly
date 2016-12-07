@@ -56,14 +56,10 @@ will be discussed below.
 
 While it may seem that this method only allows to write linear pipelines,
 general DAGs can easily built be using dictionaries. To simplify this pattern
-``flowly`` offers a couple of helpers:
+``flowly`` offers the following helpers:
 
 - :func:`flowly.tz.build_dict`
 - :func:`flowly.tz.itemsetter`
-
-Consider the following example::
-
-    TODO: add an example
 
 Finally, flowly offser support for both data and operation parallelism via its
 :func:`flowly.tz.apply_map_concat` function.
