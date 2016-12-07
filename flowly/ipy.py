@@ -1,6 +1,13 @@
 from __future__ import print_function, division, absolute_import
 
 
+def printmk(fmt, *args, **kwargs):
+    """Print markdown in ipython.
+    """
+    from IPython.display import display_markdown, Markdown
+    display_markdown(Markdown(fmt.format(*args, **kwargs)))
+
+
 def add_toc():  # pragma: no cover
     """Add a dynamic table of contents to an ipython notebook.
 
