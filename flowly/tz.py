@@ -2,7 +2,9 @@
 """
 from __future__ import print_function, division, absolute_import
 
+import functools as ft
 import itertools as it
+import operator as op
 
 # TODO: add proper __all__
 
@@ -181,7 +183,7 @@ class reduceby(object):
 
     def __call__(self, seq):
         return [
-            (key, reduce(self.binop, subseq))
+            (key, ft.reduce(self.binop, subseq))
             for (key, subseq) in groupby(self.key)(seq)
         ]
 
@@ -232,6 +234,80 @@ def seq(*items):
         [[1], [2]]
     """
     return list(items)
+
+
+class kv_keymap(object):
+    def __init__(self, func):
+        self.func = func
+
+    def __call__(self, obj):
+        return (
+            (self.func(key), value)
+            for (key, value) in obj
+        )
+
+
+class kv_valmap(object):
+    def __init__(self, func):
+        self.func = func
+
+    def __call__(self, obj):
+        return (
+            (key, self.func(value))
+            for (key, value) in obj
+        )
+
+
+class kv_reduceby(object):
+    """Reduce for key value pairs, only values are seend by the reducer.
+
+    In contrast to :func:`flowly.tz.reduceby`, the data should be a list of
+    key-value pairs.
+    The groups are formed by the key part of each item and the reducer is only
+    applied to the values.
+    This function is designed to map from a list of key-value pairs to another
+    list of key-value pairs.
+
+    :param Callable[Any,Any,Any] binop:
+        a binary function that maps to values to an aggregated value.
+    """
+    def __init__(self, binop):
+        self.binop = binop
+
+    def __call__(self, obj):
+        return [
+            (key, ft.reduce(self.binop, [val for _, val in group]))
+            for (key, group) in groupby(op.itemgetter(0))(obj)
+        ]
+
+
+class kv_reductionby(object):
+    """Reduction for key value pairs, only values are seend by the reducer.
+
+    In contrast to :func:`flowly.tz.reductionby`, the data should be a list of
+    key-value pairs.
+    The groups are formed by the key part of each item and the reduction is only
+    applied to the values.
+    This function is designed to map from a list of key-value pairs to another
+    list of key-value pairs.
+    """
+    def __init__(self, perpartition, aggregate, split_every=None):
+        self.perpartition = perpartition
+        self.aggregate = aggregate
+        self.split_every = split_every
+
+    def __call__(self, obj):
+        if self.perpartition is None:
+            reducer = self.aggregate
+
+        else:
+            def reducer(obj):
+                return self.aggregate([self.perpartition(obj)])
+
+        return [
+            (key, reducer([val for _, val in group]))
+            for (key, group) in groupby(op.itemgetter(0))(obj)
+        ]
 
 
 def optional(val):

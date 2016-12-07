@@ -10,6 +10,7 @@ python -m flake8 tests/ flowly/
 
 echo ":: run tests"
 python -m coverage run -m pytest tests
+python3 -m pytest tests
 
 echo ":: generate coverage report"
 python -m coverage html -d tmp/coverage

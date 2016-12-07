@@ -4,6 +4,7 @@ from __future__ import print_function, division, absolute_import
 
 import functools as ft
 import itertools as it
+import operator as op
 import logging
 
 try:
@@ -22,7 +23,6 @@ from toolz import (
     count,
     merge,
     partition_all,
-    reduce,
 )
 
 from .tz import (
@@ -33,6 +33,10 @@ from .tz import (
     frequencies,
     groupby,
     itemsetter,
+    kv_keymap,
+    kv_reduceby,
+    kv_reductionby,
+    kv_valmap,
     raise_,
     reduceby,
     reduction,
@@ -93,6 +97,13 @@ def apply(transform, obj, rules=None):
 
 
 def get_default_rules():
+    """
+    Return the list of default rules used to interpret expressions in
+    :func:`apply()<flowly.dsk.apply>`.
+
+    Each rules has an additional property ``.name``, that may be useful when
+    modifying the rules.
+    """
     return [
         adict(
             name='builtins.sum', match=_match_equal(builtins.sum), apply=_methodcaller('sum'),
@@ -160,7 +171,7 @@ def get_default_rules():
             match=_match_curried(ft.reduce),
             apply=lambda bag, transform, rules: bag.reduction(
                 lambda i: i,
-                lambda partitions: reduce(transform.args[0], it.chain.from_iterable(partitions)),
+                lambda partitions: ft.reduce(transform.args[0], it.chain.from_iterable(partitions)),
             )
         ),
         adict(
@@ -217,7 +228,7 @@ def get_default_rules():
             apply=_build_dask_dict,
         ),
         adict(
-            name='flowly.tz.build_dict',
+            name='flowly.tz.itemsetter',
             match=_match_isinstance(itemsetter),
             apply=_update_dask_dict,
         ),
@@ -233,12 +244,36 @@ def get_default_rules():
             apply=lambda bag, transform, rules: bag.groupby(transform.key),
         ),
         adict(
+            name='flowlfy.tz.kv_keymap',
+            match=_match_isinstance(kv_keymap),
+            apply=lambda bag, transform, rules: apply(
+                toolz.curried.map(lambda t: (transform.func(t[0]), t[1])), bag, rules=rules,
+            ),
+        ),
+        adict(
+            name='flowly.tz.kv_valmap',
+            match=_match_isinstance(kv_valmap),
+            apply=lambda bag, transform, rules: apply(
+                toolz.curried.map(lambda t: (t[0], transform.func(t[1]))), bag, rules=rules,
+            ),
+        ),
+        adict(
+            name='flowly.tz.kv_reduceby',
+            match=_match_isinstance(kv_reduceby),
+            apply=_apply_kv_reduceby,
+        ),
+        adict(
+            name='flowly.tz.kv_reductionby',
+            match=_match_isinstance(kv_reductionby),
+            apply=_apply_kv_reductionby,
+        ),
+        adict(
             name='flowly.tz.reduceby',
             match=_match_isinstance(reduceby),
             apply=lambda bag, transform, rules: (
                 bag
                 .groupby(transform.key)
-                .map(lambda (k, v): (k, reduce(transform.binop, v)))
+                .map(lambda t: (t[0], ft.reduce(transform.binop, t[1])))
             ),
         ),
         adict(
@@ -347,12 +382,52 @@ def _update_dask_dict(obj, transform, rules):
 
 def _apply_reductionby(obj, transform, rules):
     if transform.perpartition is not None:
-        raise ValueError("reductionby does not support perpartition currently")
+        # TODO: optimize perpartition call
+        impl = chained(
+            groupby(transform.key),
+            toolz.curried.map(lambda t: (
+                t[0],
+                transform.aggregate([transform.perpartition(t[1])])
+            )),
+        )
 
-    impl = chained(
-        groupby(transform.key),
-        toolz.curried.map(lambda t: (t[0], transform.aggregate(t[1]))),
+    else:
+        impl = chained(
+            groupby(transform.key),
+            toolz.curried.map(lambda t: (t[0], transform.aggregate(t[1]))),
+        )
+
+    return apply(impl, obj, rules=rules)
+
+
+def _apply_kv_reduceby(obj, transform, rules):
+    return (
+        obj
+        .groupby(op.itemgetter(0))
+        .map(lambda t: (
+            t[0], ft.reduce(transform.binop, (i for (_, i) in t[1]))
+        ))
     )
+
+
+def _apply_kv_reductionby(obj, transform, rules):
+    if transform.perpartition is not None:
+        impl = reductionby(
+            key=op.itemgetter(0),
+            split_every=transform.split_every,
+            perpartition=lambda t: transform.perpartition([i for _, i in t]),
+
+            # NOTE: perpartition strips the key
+            aggregate=lambda t: transform.aggregate(t),
+        )
+
+    else:
+        impl = reductionby(
+            key=op.itemgetter(0),
+            split_every=transform.split_every,
+            perpartition=None,
+            aggregate=lambda t: transform.aggregate([i for _, i in t]),
+        )
 
     return apply(impl, obj, rules=rules)
 

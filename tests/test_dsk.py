@@ -16,8 +16,9 @@ from toolz.curried import (
 )
 import dask.bag as db
 from dask.delayed import delayed
+from dask.async import get_sync
 
-from flowly.dsk import apply, item_from_object, dask_dict
+from flowly.dsk import apply, apply_to_local, item_from_object, dask_dict
 from flowly.tz import (
     apply_concat,
     apply_map_concat,
@@ -26,6 +27,10 @@ from flowly.tz import (
     frequencies,
     groupby,
     itemsetter,
+    kv_keymap,
+    kv_valmap,
+    kv_reduceby,
+    kv_reductionby,
     reduceby,
     reduction,
     seq,
@@ -56,7 +61,7 @@ def test_unknown_func():
     ([False, False, False, False, False], False),
 ])
 def test_all(input, output):
-    assert apply(all, db.from_sequence(input, npartitions=3)).compute() is output
+    assert apply_to_local(all, input, npartitions=3) is output
 
 
 @pytest.mark.parametrize('input,output', [
@@ -65,31 +70,23 @@ def test_all(input, output):
     ([False, False, False, False, False], False),
 ])
 def test_any(input, output):
-    assert apply(any, db.from_sequence(input, npartitions=3)).compute() is output
+    assert apply_to_local(any, input, npartitions=3) is output
 
 
 def test_len():
-    obj = db.from_sequence(range(10), npartitions=3)
-    assert apply(len, obj).compute() == 10
+    assert apply_to_local(len, range(10), npartitions=3) == 10
 
 
 def test_max():
-    obj = db.from_sequence(range(10), npartitions=3)
-    assert apply(max, obj).compute() == 9
+    assert apply_to_local(max, range(10), npartitions=3) == 9
 
 
 def test_min():
-    obj = db.from_sequence(range(10), npartitions=3)
-    assert apply(min, obj).compute() == 0
+    assert apply_to_local(min, range(10), npartitions=3) == 0
 
 
 def test_sum():
-    obj = db.from_sequence(range(10), npartitions=3)
-
-    actual = apply(sum, obj)
-    expected = sum(range(10))
-
-    assert actual.compute() == expected
+    assert apply_to_local(sum, range(10), npartitions=3) == sum(range(10))
 
 
 def test_toolz_pluck():
@@ -136,7 +133,7 @@ def test_toolz_map():
     obj = db.from_sequence(range(10), npartitions=3)
 
     actual = apply(map(lambda x: x + 3), obj)
-    expected = range(3, 13)
+    expected = list(range(3, 13))
 
     assert actual.compute() == expected
 
@@ -286,6 +283,61 @@ def test_flowly_tz_groupby():
         (key, sorted(values)) for (key, values) in result
     )
     expected = sorted([(1, [1, 3, 5, 7]), (0, [2, 4, 6])])
+
+    assert actual == expected
+
+
+def test_flowly_kv_keymap():
+    obj = db.from_sequence([(i % 2, i) for i in range(20)], npartitions=10)
+    expected = [(10 * (i % 2), i) for i in range(20)]
+
+    actual = apply(kv_keymap(lambda i: 10 * i), obj)
+    assert sorted(actual.compute()) == sorted(expected)
+
+
+def test_flowly_kv_valmap():
+    obj = db.from_sequence([(i % 2, i) for i in range(20)], npartitions=10)
+    expected = [(i % 2, 10 * i) for i in range(20)]
+
+    actual = apply(kv_valmap(lambda i: 10 * i), obj)
+    assert sorted(actual.compute()) == sorted(expected)
+
+
+def test_kv_reduceby():
+    seq = [(i % 2, i) for i in [1, 2, 3, 4, 5, 6, 7]]
+    transform = kv_reduceby(lambda a, b: a + b)
+    actual = sorted(apply_to_local(transform, seq, npartitions=3))
+    expected = sorted([
+        (1, sum([1, 3, 5, 7])),
+        (0, sum([2, 4, 6])),
+    ])
+
+    assert actual == expected
+
+
+def test_kv_reductionby__no_perpartition():
+    seq = [(i % 2, i) for i in [1, 2, 3, 4, 5, 6, 7]]
+    transform = kv_reductionby(None, sum)
+    actual = sorted(apply_to_local(transform, seq, npartitions=3, get=get_sync))
+    expected = sorted([
+        (1, sum([1, 3, 5, 7])),
+        (0, sum([2, 4, 6])),
+    ])
+
+    assert actual == expected
+
+
+def test_kv_reductionby__with_perpartition():
+    seq = [(i % 2, i) for i in [1, 2, 3, 4, 5, 6, 7]]
+    transform = kv_reductionby(
+        lambda x: x,
+        lambda parts: sum(i for part in parts for i in part),
+    )
+    actual = sorted(apply_to_local(transform, seq, npartitions=3, get=get_sync))
+    expected = sorted([
+        (1, sum([1, 3, 5, 7])),
+        (0, sum([2, 4, 6])),
+    ])
 
     assert actual == expected
 
