@@ -12,6 +12,40 @@ _logger = logging.getLogger(__name__)
 # TODO: fix worker ports
 # TOOD: allow to set executables
 class LocalCluster(object):
+    """Start a local ``distributed`` cluster.
+
+    The cluster object may be used as a context manager.
+    The cluster is started before entering the ``with`` statement and stopped
+    when exiting the cluster.
+    For example::
+
+        with LocalCluster() as cluster:
+            ...
+
+    is roughly equivalent to::
+
+        cluster = LocalCluster()
+        cluster.start()
+
+        ...
+
+        cluster.end()
+
+    :param int workers:
+        the number of workers to start. If ``worker <= 0``, the local cluster
+        will contain as many workers as the CPUs are available.
+
+    :param int scheduler_port:
+        the port of the scheduler to use.
+
+    :ivar client:
+        after the cluster is started a distributed client connected to the
+        scheduler.
+
+    :ivar get:
+        after the cluster is started, a reference to the ``get`` method of the
+        client.
+    """
     def __init__(
             self,
             workers=-1,
@@ -20,7 +54,7 @@ class LocalCluster(object):
             client_class=Client,
             wait_for_server=None,
     ):
-        if workers < 0:  # pragma: no cover
+        if workers <= 0:  # pragma: no cover
             workers = multiprocessing.cpu_count()
 
         if wait_for_server is None:  # pragma: no cover
@@ -36,6 +70,10 @@ class LocalCluster(object):
         self.n_workers = workers
 
     def start(self):
+        """Start the cluster by starting all required processes.
+
+        If the cluster is already running, stop it.
+        """
         scheduler_address = '127.0.0.1:{}'.format(self.scheduler_port)
 
         self.stop()
@@ -62,6 +100,8 @@ class LocalCluster(object):
         return self.subprocess.Popen(args)
 
     def stop(self):
+        """Stop the cluster by killing any external processes.
+        """
         for worker in self.workers:
             worker.kill()
 

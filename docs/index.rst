@@ -18,7 +18,9 @@ Contents:
 .. toctree::
    :maxdepth: 2
 
+   examples
    pipelines
+   distributed
    proxy
    dataframes
    misc

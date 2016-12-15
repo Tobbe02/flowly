@@ -56,6 +56,25 @@ def item_from_object(obj):
 
 def apply_to_local(transform, obj, npartitions=None, get=None, rules=None):
     """Distribute obj, then apply the transform, finally compute the result.
+
+    :param Callable[Any,Any] transform:
+        the transformation to apply.
+
+    :param Sequence[Any] obj:
+        the list of objects to transform.
+
+    :param Optional[int] npartitions:
+        the number of partitions to split the original sequence into.
+
+    :param Callable[Any,Any,Any] get:
+        the get function to use when computing the resulting dask object.
+        To execute in parallel, use the ``get`` method of
+        ``distributed.Client``.
+        See :class:`flowly.dst.LocalCluster` for a simple way to start a local
+        cluster and to construct the client.
+
+    :param Optional[Iterable] rules:
+        See :func:`flowly.dsk.apply`.
     """
     obj = db.from_sequence(obj, npartitions=npartitions)
     obj = apply(transform, obj, rules=rules)

@@ -37,4 +37,6 @@ Reference
         # prints 5.00 % to stdout
         p = show % '{:.2%}'| 0.05
 
+.. autofunction:: flowly.tz.timed(tag=None)
+
 .. autofunction:: flowly.ipy.add_toc
