@@ -9,13 +9,9 @@ complex transformation and analysis pipelines.
 
 .. note::
 
-    This package is still in-flux and very open for suggestions and extensions.
+    This package and its documentation are still in-flux and very open for
+    suggestions and extensions.
     Please, fell free to open an issue on github or open a pull-request.
-
-
-.. note::
-
-    This documentation is still a work in progress.
 
 Contents:
 

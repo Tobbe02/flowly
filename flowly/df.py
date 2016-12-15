@@ -79,14 +79,6 @@ class bound_slice(object):
         return getattr(df, self.loc_attr)[self.key]
 
 
-class summarise(object):
-    def __init__(self, *exprs):
-        raise NotImplementedError()
-
-    def __call__(self):
-        raise NotImplementedError()
-
-
 def drop_index(df):
     """Drop the index from a dataframe.
 

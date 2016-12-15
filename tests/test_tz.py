@@ -17,11 +17,14 @@ from flowly.tz import (
     kv_reductionby,
     kv_valmap,
     optional,
+    printf,
     raise_,
     reduceby,
     reduction,
+    reductionby,
     seq,
     show,
+    timed,
     try_call,
 )
 
@@ -165,6 +168,34 @@ def test_kv_reductionby__with_perpartition():
     assert actual == expected
 
 
+def test_reductionby__no_perpartition():
+    seq = [1, 2, 3, 4, 5, 6, 7]
+    transform = reductionby(lambda x: x % 2, None, sum)
+    actual = sorted(transform(seq))
+    expected = sorted([
+        (1, sum([1, 3, 5, 7])),
+        (0, sum([2, 4, 6])),
+    ])
+
+    assert actual == expected
+
+
+def test_reductionby__with_perpartition():
+    seq = [1, 2, 3, 4, 5, 6, 7]
+    transform = reductionby(
+        lambda x: x % 2,
+        lambda x: x,
+        lambda parts: sum(i for part in parts for i in part),
+    )
+    actual = sorted(transform(seq))
+    expected = sorted([
+        (1, sum([1, 3, 5, 7])),
+        (0, sum([2, 4, 6])),
+    ])
+
+    assert actual == expected
+
+
 def test_reduction():
     obj = [1, 2, 3, 4, 5, 6, 7, 8, 9]
 
@@ -181,6 +212,20 @@ def test_seq():
     assert seq(1) == [1]
     assert seq(1, 2) == [1, 2]
     assert seq(1, 2, 3) == [1, 2, 3]
+
+
+def test_printf():
+    printf('{0:.2%} {key} {foo}', 0.005, key='value', foo='bar')
+
+
+def test_timed():
+    with timed():
+        pass
+
+
+def test_timed_with_tag():
+    with timed(tag='operation'):
+        pass
 
 
 def test_optional__example():

@@ -2,9 +2,15 @@
 """
 from __future__ import print_function, division, absolute_import
 
+import contextlib
 import functools as ft
+import inspect
 import itertools as it
+import logging
 import operator as op
+import time
+
+_logger = logging.getLogger(__name__)
 
 # TODO: add proper __all__
 
@@ -414,7 +420,38 @@ def try_call(func, *args, **kwargs):
 
 
 def raise_(exc_class, *args, **kwargs):
+    """Construct and raise an exception as an expression.
+    """
     raise exc_class(*args, **kwargs)
+
+
+@contextlib.contextmanager
+def timed(tag=None):
+    """Time a codeblock and print the time taken.
+    """
+    if tag is None:
+        msg = 'took %s s'
+
+    else:
+        msg = '{} took %s s'.format(tag)
+
+    logger = _get_caller_logger()
+    start = time.time()
+    yield
+    end = time.time()
+    logger.info(msg, end - start)
+
+
+def _get_caller_logger(depth=2):
+    stack = inspect.stack()
+
+    if depth >= len(stack):  # pragma: no cover
+        return logging.getLogger(__name__)
+
+    # NOTE: python2 returns raw tuples, index 0 is the frame
+    frame = stack[depth][0]
+    name = frame.f_globals.get('__name__')
+    return logging.getLogger(name)
 
 
 class _Gettable(object):

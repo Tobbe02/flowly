@@ -9,6 +9,15 @@ import pandas.util.testing as pdt
 from toolz import pipe
 
 
+def test_as_frame():
+    actual = fdf.as_frame(foo=[1, 2, 3], bar=[4, 5, 6])
+    expected = pd.DataFrame({
+        'foo': [1, 2, 3],
+        'bar': [4, 5, 6],
+    })
+    pdt.assert_frame_equal(actual, expected)
+
+
 def test_filter__example():
     df = pd.DataFrame({
         'a': [1, 2, 3, 4],
