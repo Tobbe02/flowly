@@ -30,8 +30,40 @@ To apply the function ``func`` across a list of objects in parallel across
     * :class:`flowly.dst.LocalCluster`
 
 
-Bootstrapping results
----------------------
+Word Count
+----------
+
+Of course, also the hello-world of parallel processing can be implemented using
+flowly::
+
+    # generate random input documents
+    import random
+    words = ['the', 'brown', 'fox', 'jumped', 'over', 'the', 'hedge']
+    documents = [
+        ' '.join(random.choice(words) for _ in range(random.randint(0, 100)))
+        for _ in range(100)
+    ]
+
+    # count words
+    from flowly.tz import kv_reductionby, chained
+    from toolz import concat
+    from toolz.curried import map
+
+    count_words = chained(
+        map(lambda doc: [(word, 1) for word in doc.split(' ')]),
+        concat,
+        kv_reductionby(sum, sum),
+    )
+
+    with LocalCluster() as cluster:
+        word_counts = apply_to_local(
+            count_words, documents,
+            npartitions=20,
+            get=cluster.get,
+        )
+
+Bootstrap Analysis
+------------------
 
 The following example is a variation of the trivial parallelization example.
 Suppose, you got two different groups that you watch over two days.
