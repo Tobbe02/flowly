@@ -2,11 +2,16 @@ import logging
 import multiprocessing
 import subprocess
 import socket
+import sys
 import time
 
 from distributed import Client
 
 _logger = logging.getLogger(__name__)
+
+
+_dask_scheduler_cmd = [sys.executable, '-m', 'distributed.cli.dask_scheduler']
+_dask_worker_cmd = [sys.executable, '-m', 'distributed.cli.dask_worker']
 
 
 # TODO: fix worker ports
@@ -80,14 +85,21 @@ class LocalCluster(object):
 
         try:
             _logger.info("start scheduler")
-            self.scheduler = self._popen('dask-scheduler', '--port', str(self.scheduler_port))
+            self.scheduler = self._popen(
+                _dask_scheduler_cmd + [
+                    '--port', str(self.scheduler_port),
+                    '--host', '127.0.0.1',
+                ]
+            )
 
             _logger.info("wait for scheduler")
             self.wait_for_server(scheduler_address)
 
             for _ in range(self.n_workers):
                 _logger.info("start worker")
-                self.workers.append(self._popen('dask-worker', '--nthreads', '1', scheduler_address))
+                self.workers.append(self._popen(
+                    _dask_worker_cmd + ['--nthreads', '1', scheduler_address]
+                ))
 
             self.client = self.client_class('127.0.0.1:{}'.format(self.scheduler_port))
             self.get = self.client.get
@@ -96,7 +108,7 @@ class LocalCluster(object):
             self.stop()
             raise
 
-    def _popen(self, *args):
+    def _popen(self, args):
         return self.subprocess.Popen(args)
 
     def stop(self):
