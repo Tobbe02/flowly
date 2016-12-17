@@ -1,9 +1,12 @@
 import logging
 import multiprocessing
+import os
 import subprocess
 import socket
 import sys
 import time
+
+import psutil
 
 from distributed import Client
 
@@ -109,16 +112,23 @@ class LocalCluster(object):
             raise
 
     def _popen(self, args):
-        return self.subprocess.Popen(args)
+        # disable hash randomization
+        env = os.environ.copy()
+        env['PYTHONHASHSEED'] = '0'
+
+        _logger.info('start process %s', args)
+        return self.subprocess.Popen(args, env=env, shell=False)
 
     def stop(self):
         """Stop the cluster by killing any external processes.
         """
-        for worker in self.workers:
-            worker.kill()
-
         if self.scheduler:
-            self.scheduler.kill()
+            _logger.info("kill scheduler")
+            _kill(self.scheduler.pid)
+
+        for worker in self.workers:
+            _logger.info("kill worker %s", worker)
+            _kill(worker.pid)
 
         self.workers = []
         self.scheduler = None
@@ -131,6 +141,15 @@ class LocalCluster(object):
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.stop()
+
+
+def _kill(pid):
+    """copied from http://stackoverflow.com/a/25134985
+    """
+    process = psutil.Process(pid)
+    for proc in process.children(recursive=True):
+        proc.kill()
+    process.kill()
 
 
 def _wait_for_server(address, sleep=1, retries=10):  # pragma: no cover

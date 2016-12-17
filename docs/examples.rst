@@ -62,6 +62,13 @@ flowly::
             get=cluster.get,
         )
 
+.. seealso ::
+
+    * :func:`toolz.concat`
+    * :func:`flowly.dsk.apply_to_local`
+    * :func:`flowly.tz.kv_reductionby`
+    * :class:`flowly.dst.LocalCluster`
+
 Bootstrap Analysis
 ------------------
 
