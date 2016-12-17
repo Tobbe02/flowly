@@ -400,9 +400,12 @@ def kv_transform(transform):
       ``[(k, binop(binop(a, b), c))]``.
     - :func:`flowly.tz.reduction`:
       transform a list of the form ``[(k, a), (k, b), (k, c), ...]`` to
-      ``[(k, aggregate([a, b, c]), ...]``.
+      ``[(k, aggregate([a, b, c])), ...]``.
       The ``perpartition`` and  ``split_every`` are also supported.
-    - :func:`flowly.tz.chained`: transform all steps of the chain.
+    - :func:`flowly.tz.collect`:
+      transform a list of the form ``[(k, a), (k, b), (k, c), ...]`` to
+      ``[(k, [a, b, c]), ...]``.
+    - :func:`flowly.tz.chained`: rewrite all steps of the chain.
 
     For example::
 
@@ -533,6 +536,9 @@ class kv_reductionby(object):
             (key, reducer([val for _, val in group]))
             for (key, group) in groupby(op.itemgetter(0))(obj)
         ]
+
+
+collect = reduction(None, list)
 
 
 def optional(val):

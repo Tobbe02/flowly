@@ -23,6 +23,7 @@ from flowly.tz import (
     apply_map_concat,
     build_dict,
     chained,
+    collect,
     frequencies,
     groupby,
     itemsetter,
@@ -372,6 +373,25 @@ def test_flowly_kv_transform__concat(executor):
         (i % 2, factor * i)
         for i in [1, 2, 3, 4, 5, 6, 7]
         for factor in [1, 2, 3]
+    ])
+
+
+@pytest.mark.parametrize('executor', executors)
+def test_flowly_kv_transform__collect(executor):
+    actual = executor(
+        kv_transform(
+            chained(
+                collect,
+                map(sorted)
+            )
+        ),
+        [(i % 2, i) for i in [1, 2, 3, 4, 5, 6, 7]],
+        npartitions=3,
+    )
+
+    assert sorted(actual) == sorted([
+        (0, [2, 4, 6]),
+        (1, [1, 3, 5, 7]),
     ])
 
 

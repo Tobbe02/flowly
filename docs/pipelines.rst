@@ -201,6 +201,11 @@ Buildings Blocks
 
 .. autofunction:: flowly.tz.chained
 
+.. function:: flowly.tz.collect
+
+    shorthand for ``reduction(None, list)``.
+    Will collect all values into a single list.
+
 .. autofunction:: flowly.tz.frequencies
 
 .. autofunction:: flowly.tz.groupby
