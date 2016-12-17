@@ -1,6 +1,7 @@
 import logging
 import multiprocessing
 import os
+import random
 import subprocess
 import socket
 import sys
@@ -20,7 +21,7 @@ _dask_worker_cmd = [sys.executable, '-m', 'distributed.cli.dask_worker']
 # TODO: fix worker ports
 # TOOD: allow to set executables
 class LocalCluster(object):
-    """Start a local ``distributed`` cluster.
+    """A 'local' ``distributed`` cluster.
 
     The cluster object may be used as a context manager.
     The cluster is started before entering the ``with`` statement and stopped
@@ -37,7 +38,10 @@ class LocalCluster(object):
 
         ...
 
-        cluster.end()
+        cluster.stop()
+
+    For long running usage of the cluster, explicitly calling ``start`` and
+    ``stop`` may be the preferred option.
 
     :param int workers:
         the number of workers to start. If ``worker <= 0``, the local cluster
@@ -46,32 +50,35 @@ class LocalCluster(object):
     :param int scheduler_port:
         the port of the scheduler to use.
 
+    :param Optional[int] hash_seed:
+        to get reliable hasing across workers, the ``PYTHONHASHSEED``
+        environment variable will be set. If given, this parameter specifies
+        the value of said variable. Otherwise, the pre existing value of
+        ``PYTHONHASHSEED`` will be used if it is a number, otherwise a random
+        numer is chosen.
+
     :ivar client:
         after the cluster is started a distributed client connected to the
         scheduler.
 
     :ivar get:
         after the cluster is started, a reference to the ``get`` method of the
-        client.
+        client. It can be used as an argument to the ``compute`` method of dask
+        objects.
     """
     def __init__(
             self,
             workers=-1,
             scheduler_port=8786,
-            subprocess=subprocess,
-            client_class=Client,
-            wait_for_server=None,
+            hash_seed=None,
     ):
-        if workers <= 0:  # pragma: no cover
+        if workers <= 0:
             workers = multiprocessing.cpu_count()
 
-        if wait_for_server is None:  # pragma: no cover
-            wait_for_server = _wait_for_server
+        if hash_seed is None:
+            hash_seed = _get_hash_seed(os.environ)
 
-        self.client_class = client_class
-        self.subprocess = subprocess
-        self.wait_for_server = wait_for_server
-
+        self.hash_seed = hash_seed
         self.scheduler_port = scheduler_port
         self.scheduler = None
         self.workers = []
@@ -96,7 +103,7 @@ class LocalCluster(object):
             )
 
             _logger.info("wait for scheduler")
-            self.wait_for_server(scheduler_address)
+            _wait_for_server(scheduler_address)
 
             for _ in range(self.n_workers):
                 _logger.info("start worker")
@@ -104,7 +111,7 @@ class LocalCluster(object):
                     _dask_worker_cmd + ['--nthreads', '1', scheduler_address]
                 ))
 
-            self.client = self.client_class('127.0.0.1:{}'.format(self.scheduler_port))
+            self.client = Client(scheduler_address)
             self.get = self.client.get
 
         except:
@@ -112,23 +119,23 @@ class LocalCluster(object):
             raise
 
     def _popen(self, args):
-        # disable hash randomization
+        # TODO: keep hashseed, if its a number
         env = os.environ.copy()
-        env['PYTHONHASHSEED'] = '0'
+        env['PYTHONHASHSEED'] = str(self.hash_seed)
 
         _logger.info('start process %s', args)
-        return self.subprocess.Popen(args, env=env, shell=False)
+        return subprocess.Popen(args, env=env, shell=False)
 
     def stop(self):
         """Stop the cluster by killing any external processes.
         """
         if self.scheduler:
             _logger.info("kill scheduler")
-            _kill(self.scheduler.pid)
+            _kill(self.scheduler)
 
         for worker in self.workers:
             _logger.info("kill worker %s", worker)
-            _kill(worker.pid)
+            _kill(worker)
 
         self.workers = []
         self.scheduler = None
@@ -143,10 +150,19 @@ class LocalCluster(object):
         self.stop()
 
 
-def _kill(pid):
+def _get_hash_seed(env):
+    try:
+        return int(env['PYTHONHASHSEED'])
+
+    except (TypeError, KeyError):
+        # TODO: is this range fixed or platform dependent?
+        return random.randint(0, 4294967295)
+
+
+def _kill(proc):
     """copied from http://stackoverflow.com/a/25134985
     """
-    process = psutil.Process(pid)
+    process = psutil.Process(proc.pid)
     for proc in process.children(recursive=True):
         proc.kill()
     process.kill()

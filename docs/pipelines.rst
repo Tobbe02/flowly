@@ -98,14 +98,18 @@ DAG primitives are supported:
 - :func:`builtins.min()<min>`
 - :func:`builtins.max()<max>`
 - :func:`builtins.sum()<sum>`
-- :func:`itertools.chain.from_iterable()<itertools.chain>`
+- :func:`itertools.chain.from_iterable()<itertools.chain>`:
+  often called "flatten" in  other frameworks.
 - :func:`toolz.compose()<toolz.functoolz.compose>`
-- :func:`toolz.concat()<toolz.itertoolz.concat>`
+- :func:`toolz.concat()<toolz.itertoolz.concat>`:
+  often called "flatten" in  other frameworks.
 - :func:`toolz.count()<toolz.itertoolz.count>`
 - :func:`toolz.unique()<toolz.itertoolz.unique>` (without key function)
 - :func:`toolz.curried.filter()<filter>`
 - :func:`toolz.curried.map()<map>`
-- :func:`toolz.curried.mapcat()<toolz.itertoolz.mapcat>`
+- :func:`toolz.curried.mapcat()<toolz.itertoolz.mapcat>`:
+  often called `flatmap` in other frameworks.
+  First apply a function and then flatten the result.
 - :func:`toolz.curried.pluck()<toolz.itertoolz.pluck>`
 - :func:`toolz.curried.random_sample()<toolz.itertoolz.random_sample>`
 - :func:`toolz.curried.reduce()<functools.reduce>`.
@@ -147,6 +151,24 @@ where the latter take function that operate on two values at a time, e.g.,
 
 Working with key-value pairs
 ----------------------------
+
+Often it is natural to work with key-value pairs, where the key expresses some
+group membership.
+Often using the general reduction, reduce, and map functionality introduces
+additional overhead, since the require additional steps to operate on the value
+part of the items.
+
+To simplify the process flowly offers the following helper functions:
+
+* :func:`flowly.tz.kv_keymap`
+* :func:`flowly.tz.kv_valmap`
+* :func:`flowly.tz.kv_reduceby`
+* :func:`flowly.tz.kv_reductionby`
+
+All these methods take a list of key-value pairs as an input and return another
+list of key value pairs.
+For the reduction-by and reduce-by steps, the key of each item is used to define
+the groups.
 
 Reference
 ---------

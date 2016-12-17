@@ -17,7 +17,6 @@ of a dask value use::
 Reference
 ---------
 
-.. autoclass:: flowly.dst.LocalCluster(workers=-1, port=8786)
-
+.. autoclass:: flowly.dst.LocalCluster
 
 .. _distributed: https://distributed.readthedocs.io/en/latest/

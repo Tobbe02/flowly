@@ -352,7 +352,6 @@ def _apply__flowly__tz__apply_concat(bag, transform, rules):
 
 
 def _apply__flowly__tz__apply_map_concat(bag, transform, rules):
-    # TODO: handle impure functions
     return db.concat([
         bag.map_partitions(_apply_map_concat_impl, funcs=list(funcs), _flowly_id=flowly_id)
         # TODO: fix chunk_size

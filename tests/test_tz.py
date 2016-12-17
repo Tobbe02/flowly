@@ -208,6 +208,12 @@ def test_reduction():
     assert transform(obj) == 5.0
 
 
+def test_reduction__no_perpartition():
+    # compute the mean
+    transform = reduction(None, lambda s: sum(s) / max(1, len(s)))
+    assert transform([1, 2, 3, 4, 5, 6, 7, 8, 9]) == 5.0
+
+
 def test_seq():
     assert seq(1) == [1]
     assert seq(1, 2) == [1, 2]

@@ -12,10 +12,38 @@ import time
 
 _logger = logging.getLogger(__name__)
 
-# TODO: add proper __all__
+__all__ = [
+    'Failure',
+    'Just',
+    'Nothing',
+    'Success',
+    'apply_concat',
+    'apply_map_concat',
+    'build_dict',
+    'chained',
+    'contextlib',
+    'division',
+    'frequencies',
+    'groupby',
+    'itemsetter',
+    'kv_keymap',
+    'kv_reduceby',
+    'kv_reductionby',
+    'kv_valmap',
+    'optional',
+    'printf',
+    'raise_',
+    'reduceby',
+    'reduction',
+    'reductionby',
+    'seq',
+    'show',
+    'timed',
+    'try_call',
+]
 
 
-class ShowImpl(object):
+class _ShowImpl(object):
     def __init__(self, fmt='{!r}'):
         self.fmt = fmt
 
@@ -27,10 +55,10 @@ class ShowImpl(object):
         return self(obj)
 
     def __mod__(self, fmt):
-        return ShowImpl(fmt)
+        return _ShowImpl(fmt)
 
 
-show = ShowImpl()
+show = _ShowImpl()
 
 
 def printf(fmt, *args, **kwargs):
@@ -242,7 +270,7 @@ def frequencies(obj):
 
 
 class groupby(object):
-    """In contrast to ``toolz.groupby``, return ``(item, count)`` pairs.
+    """In contrast to ``toolz.groupby``, return ``(key, values)`` pairs.
     """
     def __init__(self, key):
         self.key = key
@@ -257,6 +285,8 @@ class groupby(object):
 
 # TODO: add support for initial value
 class reduceby(object):
+    """In contrast to ``toolz.reduceby``, return ``(key, value)`` pairs.
+    """
     def __init__(self, key, binop):
         self.key = key
         self.binop = binop
@@ -268,18 +298,43 @@ class reduceby(object):
         ]
 
 
-# TODO: handle perpartition=None, i.e., reduction(None, sum) = reduction(sum, sum)
 class reduction(object):
+    """Reduce values via aggregate functions.
+
+    :param Optional[Callable[Any,Iterable[Any]]] perpartition:
+        a function that reduces a list of values to a single object.
+        This function is used to generate intermediates before passing them
+        to aggregate.
+
+    :param Callable[Any,Iterable[Any]] aggregate:
+        a function that reduces a list of values to a single object.
+        This function is used after perpartition to compute the global
+        aggregate.
+
+    :param Optional[int] split_every:
+        a hint to the executor how to group intermediates.
+    """
     def __init__(self, perpartition, aggregate, split_every=None):
         self.perpartition = perpartition
         self.aggregate = aggregate
         self.split_every = split_every
 
     def __call__(self, obj):
-        return self.aggregate([self.perpartition(obj)])
+        if self.perpartition is None:
+            return self.aggregate(obj)
+
+        else:
+            return self.aggregate([self.perpartition(obj)])
 
 
 class reductionby(object):
+    """Like :func:`flowly.tz.reduction` but on a group basis.
+
+    :param Callable[Any,Any] key:
+        return a key to group by.
+
+    The other arguments are the same as for :func:`flowly.tz.reduction`.
+    """
     def __init__(self, key, perpartition, aggregate, split_every=None):
         self.key = key
         self.perpartition = perpartition
@@ -317,6 +372,8 @@ def seq(*items):
 
 
 class kv_keymap(object):
+    """Apply a function to the key part of each key-value pair.
+    """
     def __init__(self, func):
         self.func = func
 
@@ -328,6 +385,8 @@ class kv_keymap(object):
 
 
 class kv_valmap(object):
+    """Apply a function to the value part of each key-value pair.
+    """
     def __init__(self, func):
         self.func = func
 
@@ -427,7 +486,16 @@ def raise_(exc_class, *args, **kwargs):
 
 @contextlib.contextmanager
 def timed(tag=None):
-    """Time a codeblock and print the time taken.
+    """Time a codeblock and log the result.
+
+    Usage::
+
+        with timed():
+            long_running_operation()
+
+    :param any tag:
+        an object used to identify the timed code block. It is printed with
+        the time taken.
     """
     if tag is None:
         msg = 'took %s s'

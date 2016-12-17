@@ -47,11 +47,10 @@ flowly::
     # count words
     from flowly.tz import kv_reductionby, chained
     from toolz import concat
-    from toolz.curried import map
+    from toolz.curried import mapcat
 
     count_words = chained(
-        map(lambda doc: [(word, 1) for word in doc.split(' ')]),
-        concat,
+        mapcat(lambda doc: [(word, 1) for word in doc.split(' ')]),
         kv_reductionby(sum, sum),
     )
 
@@ -64,7 +63,7 @@ flowly::
 
 .. seealso ::
 
-    * :func:`toolz.concat`
+    * :func:`toolz.mapcat`
     * :func:`flowly.dsk.apply_to_local`
     * :func:`flowly.tz.kv_reductionby`
     * :class:`flowly.dst.LocalCluster`
