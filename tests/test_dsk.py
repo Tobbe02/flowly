@@ -16,7 +16,6 @@ from toolz.curried import (
 )
 import dask.bag as db
 from dask.delayed import delayed
-from dask.async import get_sync
 
 from flowly.dsk import apply, apply_to_local, item_from_object, dask_dict
 from flowly.tz import (
@@ -37,6 +36,11 @@ from flowly.tz import (
 )
 
 import pytest
+
+executors = [
+    lambda transform, obj, npartitions=None: transform(obj),
+    apply_to_local,
+]
 
 
 def test_apply_error():
@@ -60,8 +64,9 @@ def test_unknown_func():
     ([True, True, True, True, True], True),
     ([False, False, False, False, False], False),
 ])
-def test_all(input, output):
-    assert apply_to_local(all, input, npartitions=3) is output
+@pytest.mark.parametrize('executor', executors)
+def test_all(executor, input, output):
+    assert executor(all, input, npartitions=3) is output
 
 
 @pytest.mark.parametrize('input,output', [
@@ -69,277 +74,288 @@ def test_all(input, output):
     ([True, True, True, True, True], True),
     ([False, False, False, False, False], False),
 ])
-def test_any(input, output):
-    assert apply_to_local(any, input, npartitions=3) is output
+@pytest.mark.parametrize('executor', executors)
+def test_any(executor, input, output):
+    assert executor(any, input, npartitions=3) is output
 
 
-def test_len():
-    assert apply_to_local(len, range(10), npartitions=3) == 10
+@pytest.mark.parametrize('executor', executors)
+def test_len(executor):
+    assert executor(len, range(10), npartitions=3) == 10
 
 
-def test_max():
-    assert apply_to_local(max, range(10), npartitions=3) == 9
+@pytest.mark.parametrize('executor', executors)
+def test_max(executor):
+    assert executor(max, range(10), npartitions=3) == 9
 
 
-def test_min():
-    assert apply_to_local(min, range(10), npartitions=3) == 0
+@pytest.mark.parametrize('executor', executors)
+def test_min(executor):
+    assert executor(min, range(10), npartitions=3) == 0
 
 
-def test_sum():
-    assert apply_to_local(sum, range(10), npartitions=3) == sum(range(10))
+@pytest.mark.parametrize('executor', executors)
+def test_sum(executor):
+    assert executor(sum, range(10), npartitions=3) == sum(range(10))
 
 
-def test_toolz_pluck():
-    obj = db.from_sequence([
-        {'a': 1, 'b': 2}, {'a': 3, 'b': 4}, {'a': 5, 'b': 6},
-        {'a': 7, 'b': 8}, {'a': 9, 'b': 0}
-    ], npartitions=3)
+@pytest.mark.parametrize('executor', executors)
+def test_toolz_pluck(executor):
+    actual = executor(
+        pluck('a'),
+        [
+            {'a': 1, 'b': 2}, {'a': 3, 'b': 4}, {'a': 5, 'b': 6},
+            {'a': 7, 'b': 8}, {'a': 9, 'b': 0}
+        ],
+        npartitions=3,
+    )
 
-    actual = apply(pluck('a'), obj)
-    assert actual.compute() == [1, 3, 5, 7, 9]
-
-
-def test_toolz_pluck_multiple():
-    obj = db.from_sequence([
-        {'a': 1, 'b': 2}, {'a': 3, 'b': 4}, {'a': 5, 'b': 6},
-        {'a': 7, 'b': 8}, {'a': 9, 'b': 0}
-    ], npartitions=3)
-
-    actual = apply(pluck(['a', 'b']), obj)
-    assert actual.compute() == [(1, 2), (3, 4), (5, 6), (7, 8), (9, 0)]
+    assert list(actual) == [1, 3, 5, 7, 9]
 
 
-def test_toolz_pluck_default():
-    obj = db.from_sequence([
-        {'a': 1, 'b': 2}, {'a': 3, 'b': 4}, {'a': 5, 'b': 6},
-        {'a': 7, 'b': 8}, {'a': 9, 'c': 0}
-    ], npartitions=3)
+@pytest.mark.parametrize('executor', executors)
+def test_toolz_pluck_multiple(executor):
+    actual = executor(
+        pluck(['a', 'b']),
+        [
+            {'a': 1, 'b': 2}, {'a': 3, 'b': 4}, {'a': 5, 'b': 6},
+            {'a': 7, 'b': 8}, {'a': 9, 'b': 0}
+        ],
+        npartitions=3,
+    )
 
-    actual = apply(pluck(['a', 'b'], default=-1), obj)
-    assert actual.compute() == [(1, 2), (3, 4), (5, 6), (7, 8), (9, -1)]
-
-
-def test_toolz_count():
-    obj = db.from_sequence(range(10), npartitions=3)
-    assert apply(count, obj).compute() == 10
-
-
-def test_flowly_tz_frequencies():
-    obj = db.from_sequence([True, False, True, False, False], npartitions=3)
-    assert sorted(apply(frequencies, obj).compute()) == sorted([(True, 2), (False, 3)])
+    assert list(actual) == [(1, 2), (3, 4), (5, 6), (7, 8), (9, 0)]
 
 
-def test_toolz_map():
-    obj = db.from_sequence(range(10), npartitions=3)
+@pytest.mark.parametrize('executor', executors)
+def test_toolz_pluck_default(executor):
+    actual = executor(
+        pluck(['a', 'b'], default=-1),
+        [
+            {'a': 1, 'b': 2}, {'a': 3, 'b': 4}, {'a': 5, 'b': 6},
+            {'a': 7, 'b': 8}, {'a': 9, 'c': 0}
+        ],
+        npartitions=3,
+    )
 
-    actual = apply(map(lambda x: x + 3), obj)
-    expected = list(range(3, 13))
-
-    assert actual.compute() == expected
+    assert list(actual) == [(1, 2), (3, 4), (5, 6), (7, 8), (9, -1)]
 
 
-def test_toolz_mapcat():
-    obj = db.from_sequence([["a", "b"], ["c", "d", "e"]], npartitions=2)
+@pytest.mark.parametrize('executor', executors)
+def test_toolz_count(executor):
+    assert executor(count, range(10), npartitions=3) == 10
 
-    actual = apply(mapcat(lambda s: [c.upper() for c in s]), obj)
+
+@pytest.mark.parametrize('executor', executors)
+def test_flowly_tz_frequencies(executor):
+    actual = executor(frequencies, [True, False, True, False, False], npartitions=3)
+    assert sorted(actual) == sorted([(True, 2), (False, 3)])
+
+
+@pytest.mark.parametrize('executor', executors)
+def test_toolz_map(executor):
+    actual = executor(map(lambda x: x + 3), range(10), npartitions=3)
+    assert list(actual) == list(range(3, 13))
+
+
+@pytest.mark.parametrize('executor', executors)
+def test_toolz_mapcat(executor):
+    actual = executor(
+        mapcat(lambda s: s.upper()), ["ab", "cde"], npartitions=2,
+    )
     expected = ['A', 'B', 'C', 'D', 'E']
 
-    assert actual.compute() == expected
+    assert list(actual) == expected
 
 
-def test_toolz_random_sample():
-    obj = db.from_sequence(range(10), npartitions=3)
-    apply(random_sample(0.51), obj).compute()
+@pytest.mark.parametrize('executor', executors)
+def test_toolz_random_sample(executor):
+    executor(random_sample(0.51), range(10), npartitions=3)
 
 
-def test_toolz_random_sample__random_state():
+@pytest.mark.parametrize('executor', executors)
+def test_toolz_random_sample__random_state(executor):
     # just test that it does not raise an exception
-    obj = db.from_sequence(range(10), npartitions=3)
-    apply(random_sample(0.51, random_state=5), obj).compute()
+    executor(random_sample(0.51, random_state=5), range(10), npartitions=3)
 
 
-def test_toolz_filter():
-    obj = db.from_sequence(range(10), npartitions=3)
-    actual = apply(filter(lambda x: x % 2 == 0), obj)
-
-    assert actual.compute() == [0, 2, 4, 6, 8]
-
-
-def test_toolz_reduce():
-    obj = obj = db.from_sequence(range(100), npartitions=5)
-    actual = apply(reduce(op.add), obj)
-
-    assert actual.compute() == sum(range(100))
+@pytest.mark.parametrize('executor', executors)
+def test_toolz_filter(executor):
+    actual = executor(filter(lambda x: x % 2 == 0), range(10), npartitions=3)
+    assert list(actual) == [0, 2, 4, 6, 8]
 
 
-def test_toolz_remove():
-    obj = db.from_sequence(range(10), npartitions=3)
-    actual = apply(remove(lambda x: x % 2 == 1), obj)
-
-    assert actual.compute() == [0, 2, 4, 6, 8]
+@pytest.mark.parametrize('executor', executors)
+def test_toolz_reduce(executor):
+    assert executor(reduce(op.add), range(100), npartitions=5) == sum(range(100))
 
 
-def test_toolz_take():
-    obj = db.from_sequence(range(10), npartitions=3)
-    actual = apply(take(5), obj)
-
-    assert actual.compute() == [0, 1, 2, 3, 4]
-
-
-def test_toolz_topk():
-    obj = db.from_sequence(range(100), npartitions=3)
-    actual = apply(topk(5), obj)
-
-    assert sorted(actual.compute()) == sorted([99, 98, 97, 96, 95])
+@pytest.mark.parametrize('executor', executors)
+def test_toolz_remove(executor):
+    actual = executor(remove(lambda x: x % 2 == 1), range(10), npartitions=3)
+    assert list(actual) == [0, 2, 4, 6, 8]
 
 
-def test_toolz_topk__key():
-    obj = db.from_sequence(range(100), npartitions=3)
-    actual = apply(topk(5, key=lambda i: -i), obj)
-
-    assert sorted(actual.compute()) == sorted([0, 1, 2, 3, 4])
-
-
-def test_toolz_compose():
-    obj = db.from_sequence([[1, 2, 3], [4, 5, 6], [7, 8, 9]], npartitions=3)
-
-    actual = apply(compose(sum, it.chain.from_iterable), obj)
-
-    expected = sum(range(1, 10))
-    assert actual.compute() == expected
+@pytest.mark.parametrize('executor', executors)
+def test_toolz_take(executor):
+    actual = executor(take(5), range(10), npartitions=3)
+    assert list(actual) == [0, 1, 2, 3, 4]
 
 
-def test_toolz_unique():
-    obj = db.from_sequence((1, 2, 1, 3), npartitions=3)
-    actual = apply(unique, obj)
+@pytest.mark.parametrize('executor', executors)
+def test_toolz_topk(executor):
+    actual = executor(topk(5), range(100), npartitions=3)
+    assert sorted(actual) == sorted([99, 98, 97, 96, 95])
 
-    assert sorted(actual.compute()) == [1, 2, 3]
+
+@pytest.mark.parametrize('executor', executors)
+def test_toolz_topk__key(executor):
+    actual = executor(topk(5, key=lambda i: -i), range(100), npartitions=3)
+    assert sorted(actual) == sorted([0, 1, 2, 3, 4])
+
+
+@pytest.mark.parametrize('executor', executors)
+def test_toolz_compose(executor):
+    actual = executor(
+        compose(sum, it.chain.from_iterable),
+        [[1, 2, 3], [4, 5, 6], [7, 8, 9]],
+        npartitions=3,
+    )
+
+    assert actual == sum(range(1, 10))
+
+
+@pytest.mark.parametrize('executor', executors)
+def test_toolz_unique(executor):
+    actual = executor(unique, (1, 2, 1, 3), npartitions=3)
+    assert sorted(actual) == [1, 2, 3]
 
 
 @pytest.mark.parametrize('impl', [
     concat,
     it.chain.from_iterable,
 ])
-def test_concat(impl):
-    obj = db.from_sequence([[1, 2, 3], [4, 5, 6], [7, 8, 9]], npartitions=3)
-    actual = apply(impl, obj)
-    expected = [1, 2, 3, 4, 5, 6, 7, 8, 9]
+@pytest.mark.parametrize('executor', executors)
+def test_concat(executor, impl):
+    actual = executor(
+        impl,
+        [[1, 2, 3], [4, 5, 6], [7, 8, 9]],
+        npartitions=3,
+    )
+    assert list(actual) == [1, 2, 3, 4, 5, 6, 7, 8, 9]
 
-    assert actual.compute() == expected
 
-
-def test_flowly_apply_concat__example():
-    obj = db.from_sequence([1, 2, 3, 4], npartitions=3)
+@pytest.mark.parametrize('executor', executors)
+def test_flowly_apply_concat__example(executor):
     transform = apply_concat([
-        lambda x: x.map(lambda i: 2 * i),
-        lambda x: x.map(lambda i: 3 * i),
+        map(lambda i: 2 * i),
+        map(lambda i: 3 * i),
     ])
 
-    actual = sorted(apply(transform, obj).compute())
-    expected = sorted([2, 4, 6, 8, 3, 6, 9, 12])
-
-    assert actual == expected
+    actual = executor(transform, [1, 2, 3, 4], npartitions=3)
+    assert sorted(actual) == sorted([2, 4, 6, 8, 3, 6, 9, 12])
 
 
-def test_flowly_apply_map_concat__example():
-    from dask.async import get_sync
-    obj = db.from_sequence([1, 2, 3, 4], npartitions=3)
-
+@pytest.mark.parametrize('executor', executors)
+def test_flowly_apply_map_concat__example(executor):
     transform = apply_map_concat([
         lambda x: 2 * x,
         lambda x: 3 * x,
     ])
 
-    actual = sorted(apply(transform, obj).compute(get=get_sync))
-    expected = sorted([2, 4, 6, 8, 3, 6, 9, 12])
-
-    assert actual == expected
+    actual = executor(transform, [1, 2, 3, 4], npartitions=3)
+    assert sorted(actual) == sorted([2, 4, 6, 8, 3, 6, 9, 12])
 
 
-def test_flowly_tz_build_dict():
-    obj = db.from_sequence([1, 2, 3, 4], npartitions=3)
-
+@pytest.mark.parametrize('executor', executors)
+def test_flowly_tz_build_dict(executor):
     transform = build_dict(max=max, min=min, sum=sum)
-    actual = apply(transform, obj).compute()
+    actual = executor(transform, [1, 2, 3, 4], npartitions=3)
 
-    assert actual == dict(min=1, max=4, sum=10)
+    assert dict(actual) == dict(min=1, max=4, sum=10)
 
 
-def test_flowly_tz_build_dict__alternative():
-    obj = db.from_sequence([1, 2, 3, 4], npartitions=3)
-
+@pytest.mark.parametrize('executor', executors)
+def test_flowly_tz_build_dict__alternative(executor):
     transform = build_dict(dict(max=max), dict(min=min), sum=sum)
-
-    actual = apply(transform, obj).compute()
-
-    assert actual == dict(min=1, max=4, sum=10)
+    actual = executor(transform, [1, 2, 3, 4], npartitions=3)
+    assert dict(actual) == dict(min=1, max=4, sum=10)
 
 
-def test_flowly_tz_groupby():
-    transform = groupby(lambda i: i % 2)
-    data = db.from_sequence([1, 2, 3, 4, 5, 6, 7], npartitions=3)
-    result = apply(transform, data).compute()
-    actual = sorted(
-        (key, sorted(values)) for (key, values) in result
+@pytest.mark.parametrize('executor', executors)
+def test_flowly_tz_groupby(executor):
+    result = executor(
+        groupby(lambda i: i % 2),
+        [1, 2, 3, 4, 5, 6, 7],
+        npartitions=3,
     )
-    expected = sorted([(1, [1, 3, 5, 7]), (0, [2, 4, 6])])
-
-    assert actual == expected
-
-
-def test_flowly_kv_keymap():
-    obj = db.from_sequence([(i % 2, i) for i in range(20)], npartitions=10)
-    expected = [(10 * (i % 2), i) for i in range(20)]
-
-    actual = apply(kv_keymap(lambda i: 10 * i), obj)
-    assert sorted(actual.compute()) == sorted(expected)
+    actual = sorted(kv_valmap(sorted)(result))
+    assert actual == sorted([(1, [1, 3, 5, 7]), (0, [2, 4, 6])])
 
 
-def test_flowly_kv_valmap():
-    obj = db.from_sequence([(i % 2, i) for i in range(20)], npartitions=10)
-    expected = [(i % 2, 10 * i) for i in range(20)]
-
-    actual = apply(kv_valmap(lambda i: 10 * i), obj)
-    assert sorted(actual.compute()) == sorted(expected)
-
-
-def test_kv_reduceby():
-    seq = [(i % 2, i) for i in [1, 2, 3, 4, 5, 6, 7]]
-    transform = kv_reduceby(lambda a, b: a + b)
-    actual = sorted(apply_to_local(transform, seq, npartitions=3))
-    expected = sorted([
-        (1, sum([1, 3, 5, 7])),
-        (0, sum([2, 4, 6])),
-    ])
-
-    assert actual == expected
-
-
-def test_kv_reductionby__no_perpartition():
-    seq = [(i % 2, i) for i in [1, 2, 3, 4, 5, 6, 7]]
-    transform = kv_reductionby(None, sum)
-    actual = sorted(apply_to_local(transform, seq, npartitions=3, get=get_sync))
-    expected = sorted([
-        (1, sum([1, 3, 5, 7])),
-        (0, sum([2, 4, 6])),
-    ])
-
-    assert actual == expected
-
-
-def test_kv_reductionby__with_perpartition():
-    seq = [(i % 2, i) for i in [1, 2, 3, 4, 5, 6, 7]]
-    transform = kv_reductionby(
-        lambda x: x,
-        lambda parts: sum(i for part in parts for i in part),
+@pytest.mark.parametrize('executor', executors)
+def test_flowly_kv_keymap(executor):
+    actual = executor(
+        kv_keymap(lambda i: 10 * i),
+        [(i % 2, i) for i in range(20)],
+        npartitions=10,
     )
-    actual = sorted(apply_to_local(transform, seq, npartitions=3, get=get_sync))
-    expected = sorted([
+    assert sorted(actual) == sorted([(10 * (i % 2), i) for i in range(20)])
+
+
+@pytest.mark.parametrize('executor', executors)
+def test_flowly_kv_valmap(executor):
+    actual = executor(
+        kv_valmap(lambda i: 10 * i),
+        [(i % 2, i) for i in range(20)],
+        npartitions=10,
+    )
+    assert sorted(actual) == sorted([(i % 2, 10 * i) for i in range(20)])
+
+
+@pytest.mark.parametrize('executor', executors)
+def test_kv_reduceby(executor):
+    actual = executor(
+        kv_reduceby(lambda a, b: a + b),
+        [(i % 2, i) for i in [1, 2, 3, 4, 5, 6, 7]],
+        npartitions=3,
+    )
+
+    assert sorted(actual) == sorted([
         (1, sum([1, 3, 5, 7])),
         (0, sum([2, 4, 6])),
     ])
 
-    assert actual == expected
+
+@pytest.mark.parametrize('executor', executors)
+def test_kv_reductionby__no_perpartition(executor):
+    actual = executor(
+        kv_reductionby(None, sum),
+        [(i % 2, i) for i in [1, 2, 3, 4, 5, 6, 7]],
+        npartitions=3,
+    )
+
+    assert sorted(actual) == sorted([
+        (1, sum([1, 3, 5, 7])),
+        (0, sum([2, 4, 6])),
+    ])
+
+
+@pytest.mark.parametrize('executor', executors)
+def test_kv_reductionby__with_perpartition(executor):
+    actual = executor(
+        kv_reductionby(
+            lambda x: x,
+            lambda parts: sum(i for part in parts for i in part),
+        ),
+        [(i % 2, i) for i in [1, 2, 3, 4, 5, 6, 7]],
+        npartitions=3,
+    )
+
+    assert sorted(actual) == sorted([
+        (1, sum([1, 3, 5, 7])),
+        (0, sum([2, 4, 6])),
+    ])
 
 
 def test_flowly_tz_update_dict():
@@ -357,30 +373,29 @@ def test_flowly_tz_update_dict():
     assert actual == dict(l=[1, 2, 3, 4], min=1, max=4, sum=10)
 
 
-def test_flowly_tz_reduceby():
-    seq = db.from_sequence([1, 2, 3, 4, 5, 6, 7], npartitions=3)
-    transform = reduceby(lambda i: i % 2, lambda a, b: a + b)
-    actual = sorted(apply(transform, seq).compute())
-    expected = sorted([
+@pytest.mark.parametrize('executor', executors)
+def test_flowly_tz_reduceby(executor):
+    actual = executor(
+        reduceby(lambda i: i % 2, lambda a, b: a + b),
+        [1, 2, 3, 4, 5, 6, 7],
+        npartitions=3,
+    )
+
+    assert sorted(actual) == sorted([
         (1, sum([1, 3, 5, 7])),
         (0, sum([2, 4, 6])),
     ])
 
-    assert actual == expected
 
-
-def test_flowly_tz_reduce():
-    obj = db.from_sequence([1, 2, 3, 4, 5, 6, 7, 8, 9], npartitions=3)
-
+@pytest.mark.parametrize('executor', executors)
+def test_flowly_tz_reduce(executor):
     # compute the mean
     transform = reduction(
         lambda l: (sum(l), len(l),),
         lambda items: sum(s for s, _ in items) / max(1, sum(c for _, c in items))
     )
 
-    actual = apply(transform, obj).compute()
-
-    assert actual == 5.0
+    assert executor(transform, [1, 2, 3, 4, 5, 6, 7, 8, 9], npartitions=3) == 5.0
 
 
 def test_flowly_tz_seq():
@@ -390,16 +405,15 @@ def test_flowly_tz_seq():
     assert actual.compute() == [42]
 
 
-def test_flowly_tz_chained():
-    obj = db.from_sequence([[1, 2, 3], [4, 5, 6], [7, 8, 9]], npartitions=3)
-
-    actual = apply(
-        chained(it.chain.from_iterable, lambda obj: obj.sum()),
-        obj,
+@pytest.mark.parametrize('executor', executors)
+def test_flowly_tz_chained(executor):
+    actual = executor(
+        chained(it.chain.from_iterable, sum),
+        [[1, 2, 3], [4, 5, 6], [7, 8, 9]],
+        npartitions=3
     )
 
-    expected = sum(range(1, 10))
-    assert actual.compute() == expected
+    assert actual == sum(range(1, 10))
 
 
 def test_generic_callable():

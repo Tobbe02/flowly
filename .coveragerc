@@ -6,3 +6,4 @@ omit =
     /usr/*
     tests/*
     flowly/ipy.py
+    flowly/dst.py

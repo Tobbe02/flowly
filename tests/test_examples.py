@@ -23,7 +23,6 @@ executors = [
 
 @pytest.mark.parametrize('executor', executors)
 def test_dags(executor):
-    # TODO: why does this work? Does iteration over a bag collect the items?
     # build dags by using itemgetter and dicts
     scope = dict(
         a=db.from_sequence(range(0, 10), npartitions=3),
