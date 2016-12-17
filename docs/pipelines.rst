@@ -170,6 +170,23 @@ list of key value pairs.
 For the reduction-by and reduce-by steps, the key of each item is used to define
 the groups.
 
+To lift an existing transform to operate values grouped by the key part of a
+list of key-value pairs use :func:`flowly.tz.kv_transform`.
+For example::
+
+    # compute the sum of squares of a list of numbers
+    sum_of_squares = chained(
+        map(lambda x: x ** 2.0),
+        reduction(None, sum),
+    )
+
+    # compute the sum of squares of even and odd numbers separately
+    even_odd_sum_of_squares = chained(
+        map(lambda x: (x % 2, x)),
+        kv_transform(sum_of_squares),
+    )
+
+
 Reference
 ---------
 
@@ -195,6 +212,8 @@ Buildings Blocks
 .. autofunction:: flowly.tz.kv_reduceby
 
 .. autofunction:: flowly.tz.kv_reductionby
+
+.. autofunction:: flowly.tz.kv_transform
 
 .. autofunction:: flowly.tz.kv_valmap
 

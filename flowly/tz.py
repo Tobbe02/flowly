@@ -2,6 +2,12 @@
 """
 from __future__ import print_function, division, absolute_import
 
+try:
+    import __builtins__ as builtins
+
+except ImportError:
+    import builtins
+
 import contextlib
 import functools as ft
 import inspect
@@ -9,6 +15,8 @@ import itertools as it
 import logging
 import operator as op
 import time
+
+import toolz
 
 _logger = logging.getLogger(__name__)
 
@@ -26,6 +34,7 @@ __all__ = [
     'frequencies',
     'groupby',
     'itemsetter',
+    'kv_transform',
     'kv_keymap',
     'kv_reduceby',
     'kv_reductionby',
@@ -305,6 +314,8 @@ class reduction(object):
         a function that reduces a list of values to a single object.
         This function is used to generate intermediates before passing them
         to aggregate.
+        If passed as ``None``, all values will be collected in a single list
+        before applying the ``aggregate`` function.
 
     :param Callable[Any,Iterable[Any]] aggregate:
         a function that reduces a list of values to a single object.
@@ -369,6 +380,81 @@ def seq(*items):
         [[1], [2]]
     """
     return list(items)
+
+
+def kv_transform(transform):
+    """Let a transform operate on a list of key-value pairs, grouped by the key.
+
+    This function may be useful to execute pre-defined transformations on top
+    of different groups.
+    It can transform the following building blocks:
+
+    - :func:`toolz.concat` and
+      :func:`itertools.chain.from_iterable()<itertools.chain>`:
+      transform a list of the form ``[(k, [a, b, c]), ...]`` to
+      ``[(k, a), (k, b), (k, c), ...]``.
+    - :func:`toolz.curried.map()<map>`:
+      transform a list of the form ``[(k, v), ...]`` to ``[(k, func(v)), ...]``
+    - :func:`toolz.curried.reduce(binop)<functools.reduce>`:
+      transform a list of the form ``[(k, a), (k, b), (k, c), ...]`` to
+      ``[(k, binop(binop(a, b), c))]``.
+    - :func:`flowly.tz.reduction`:
+      transform a list of the form ``[(k, a), (k, b), (k, c), ...]`` to
+      ``[(k, aggregate([a, b, c]), ...]``.
+      The ``perpartition`` and  ``split_every`` are also supported.
+    - :func:`flowly.tz.chained`: transform all steps of the chain.
+
+    For example::
+
+        # compute the sum of squares of a list of numbers
+        sum_of_squares = chained(
+            map(lambda x: x ** 2.0),
+            reduction(None, sum),
+        )
+
+        # compute the sum of squares of even and odd numbers separately
+        even_odd_sum_of_squares = chained(
+            map(lambda x: (x % 2, x)),
+            kv_transform(sum_of_squares),
+        )
+
+    """
+    if isinstance(transform, chained):
+        return chained(*[
+            kv_transform(child) for child in transform.funcs
+        ])
+
+    elif isinstance(transform, toolz.curry) and (transform.func is builtins.map):
+        return kv_valmap(transform.args[0])
+
+    elif isinstance(transform, toolz.curry) and (transform.func is ft.reduce):
+        return kv_reduceby(transform.args[0])
+
+    elif isinstance(transform, reduction):
+        return kv_reductionby(
+            transform.perpartition, transform.aggregate,
+            split_every=transform.split_every,
+        )
+
+    elif isinstance(transform, toolz.curry) and (transform.func is toolz.mapcat):
+        return chained(
+            toolz.curried.map(lambda item: [
+                (item[0], transformed)
+                for transformed in transform.args[0](item[1])
+            ]),
+            toolz.concat,
+        )
+
+    elif transform == it.chain.from_iterable or transform == toolz.concat:
+        return chained(
+            toolz.curried.map(lambda item: [
+                (item[0], value) for value in item[1]
+            ]),
+            toolz.concat,
+        )
+
+    else:
+        raise ValueError('cannot translate %s to a kv transform' % transform)
 
 
 class kv_keymap(object):

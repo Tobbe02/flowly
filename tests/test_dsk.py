@@ -26,6 +26,7 @@ from flowly.tz import (
     frequencies,
     groupby,
     itemsetter,
+    kv_transform,
     kv_keymap,
     kv_valmap,
     kv_reduceby,
@@ -291,6 +292,92 @@ def test_flowly_tz_groupby(executor):
     )
     actual = sorted(kv_valmap(sorted)(result))
     assert actual == sorted([(1, [1, 3, 5, 7]), (0, [2, 4, 6])])
+
+
+@pytest.mark.parametrize('executor', executors)
+def test_flowly_kv_transform__chained(executor):
+    actual = executor(
+        kv_transform(
+            chained(
+                map(lambda i: 2 * i),
+                map(lambda i: 5 * i),
+            ),
+        ),
+        [(i % 2, i) for i in range(20)],
+        npartitions=10,
+    )
+    assert sorted(actual) == sorted([(i % 2, 10 * i) for i in range(20)])
+
+
+@pytest.mark.parametrize('executor', executors)
+def test_flowly_kv_transform__map(executor):
+    actual = executor(
+        kv_transform(map(lambda i: 10 * i)),
+        [(i % 2, i) for i in range(20)],
+        npartitions=10,
+    )
+    assert sorted(actual) == sorted([(i % 2, 10 * i) for i in range(20)])
+
+
+@pytest.mark.parametrize('executor', executors)
+def test_flowly_kv_transform__mapcat(executor):
+    actual = executor(
+        kv_transform(mapcat(lambda i: [10 * i, 20 * i])),
+        [(i % 2, i) for i in range(20)],
+        npartitions=10,
+    )
+    assert sorted(actual) == sorted(it.chain(
+        [(i % 2, 10 * i) for i in range(20)],
+        [(i % 2, 20 * i) for i in range(20)]
+    ))
+
+
+@pytest.mark.parametrize('executor', executors)
+def test_flowly_kv_transform__reduce(executor):
+    actual = executor(
+        kv_transform(reduce(lambda a, b: a + b)),
+        [(i % 2, i) for i in [1, 2, 3, 4, 5, 6, 7]],
+        npartitions=3,
+    )
+
+    assert sorted(actual) == sorted([
+        (1, sum([1, 3, 5, 7])),
+        (0, sum([2, 4, 6])),
+    ])
+
+
+@pytest.mark.parametrize('executor', executors)
+def test_flowly_kv_transform__reduction(executor):
+    actual = executor(
+        kv_transform(reduction(None, sum)),
+        [(i % 2, i) for i in [1, 2, 3, 4, 5, 6, 7]],
+        npartitions=3,
+    )
+
+    assert sorted(actual) == sorted([
+        (1, sum([1, 3, 5, 7])),
+        (0, sum([2, 4, 6])),
+    ])
+
+
+@pytest.mark.parametrize('executor', executors)
+def test_flowly_kv_transform__concat(executor):
+    actual = executor(
+        kv_transform(concat),
+        [(i % 2, [1 * i, 2 * i, 3 * i]) for i in [1, 2, 3, 4, 5, 6, 7]],
+        npartitions=3,
+    )
+
+    assert sorted(actual) == sorted([
+        (i % 2, factor * i)
+        for i in [1, 2, 3, 4, 5, 6, 7]
+        for factor in [1, 2, 3]
+    ])
+
+
+def test_flowly_kv_transform__unknown_function():
+    with pytest.raises(ValueError):
+        kv_transform(lambda foo: foo)
 
 
 @pytest.mark.parametrize('executor', executors)
