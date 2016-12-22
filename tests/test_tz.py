@@ -4,6 +4,7 @@ import operator as op
 
 import pytest
 
+from flowly.hashing import functional_hash
 from flowly.tz import (
     apply_concat,
     apply_map_concat,
@@ -36,6 +37,29 @@ def test_chained__example():
     )
 
     assert transform(5) == 7
+
+
+def test_chained__repr():
+    repr(chained(
+        lambda a: 2 * a,
+        lambda a: a - 3
+    ))
+
+
+def test_chained__example_iter():
+    transform = chained(*chained(
+        lambda a: 2 * a,
+        lambda a: a - 3
+    ))
+
+    assert transform(5) == 7
+
+
+def test_chained__hash():
+    hash_1 = functional_hash(chained(lambda a: 2 * a, lambda a: a - 3))
+    hash_2 = functional_hash(chained(lambda a: 2 * a, lambda a: a - 3))
+
+    assert hash_1 == hash_2
 
 
 def test_chained__composition():
@@ -222,6 +246,10 @@ def test_seq():
 
 def test_printf():
     printf('{0:.2%} {key} {foo}', 0.005, key='value', foo='bar')
+
+
+def test_printf__wrap():
+    printf.wrap('{0:.2%} {key} {foo}', 0.005, key='value', foo='bar')
 
 
 def test_timed():

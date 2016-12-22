@@ -17,6 +17,7 @@ from toolz.curried import (
 import dask.bag as db
 from dask.delayed import delayed
 
+from flowly.checkpoint import add_checkpoints, checkpoint
 from flowly.dsk import apply, apply_to_local, item_from_object, dask_dict
 from flowly.tz import (
     apply_concat,
@@ -555,3 +556,35 @@ def test_toolz_reduceby__is_not_supported():
 
     with pytest.raises(ValueError):
         apply(transform, data).compute()
+
+
+def test_checkpoint():
+    """checkpoints are currently ignored.
+    """
+    _checkpoints = {}
+
+    transform = chained(
+        map(lambda x: x * 2),
+        checkpoint(target=_checkpoints),
+        map(lambda x: x - 3),
+    )
+
+    seq = [1, 2, 3, 4, 5]
+    actual = apply_to_local(transform, seq, npartitions=3, rewrites=[add_checkpoints])
+    assert actual == [-1, 1, 3, 5, 7]
+
+
+def test_checkpoint__not_rewritten():
+    """checkpoints are currently ignored.
+    """
+    _checkpoints = {}
+
+    transform = chained(
+        map(lambda x: x * 2),
+        checkpoint(target=_checkpoints),
+        map(lambda x: x - 3),
+    )
+
+    seq = [1, 2, 3, 4, 5]
+    actual = apply_to_local(transform, seq, npartitions=3)
+    assert actual == [-1, 1, 3, 5, 7]

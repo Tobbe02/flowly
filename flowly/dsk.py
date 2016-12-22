@@ -25,6 +25,7 @@ from toolz import (
     partition_all,
 )
 
+from .checkpoint import with_checkpoint
 from .tz import (
     apply_concat,
     apply_map_concat,
@@ -54,7 +55,13 @@ def item_from_object(obj):
     return db.Item.from_delayed(delayed(obj))
 
 
-def apply_to_local(transform, obj, npartitions=None, get=None, rules=None):
+def apply_to_local(
+        transform, obj,
+        npartitions=None,
+        get=None,
+        rules=None,
+        rewrites=(),
+):
     """Distribute obj, then apply the transform, finally compute the result.
 
     :param Callable[Any,Any] transform:
@@ -77,11 +84,11 @@ def apply_to_local(transform, obj, npartitions=None, get=None, rules=None):
         See :func:`flowly.dsk.apply`.
     """
     obj = db.from_sequence(obj, npartitions=npartitions)
-    obj = apply(transform, obj, rules=rules)
+    obj = apply(transform, obj, rewrites=rewrites, rules=rules)
     return obj.compute(get=get)
 
 
-def apply(transform, obj, rules=None):
+def apply(transform, obj, rules=None, rewrites=()):
     """Translate the dask object via the given transformation.
 
     :param Callable[Any,Any] transform:
@@ -102,6 +109,8 @@ def apply(transform, obj, rules=None):
     """
     if rules is None:
         rules = get_default_rules()
+
+    transform = toolz.pipe(transform, *rewrites)
 
     for rule in rules:
         try:
@@ -232,6 +241,11 @@ def get_default_rules():
             apply=lambda bag, transform, rules: bag.concat(),
         ),
         adict(
+            name='flowly.checkpoint.with_checkpoint',
+            match=_match_isinstance(with_checkpoint),
+            apply=_apply__checkpoint__with_checkpoint,
+        ),
+        adict(
             name='flowly.tz.apply_concat',
             match=_match_isinstance(apply_concat),
             apply=_apply__flowly__tz__apply_concat,
@@ -345,6 +359,11 @@ def _methodcaller(name):
 def _apply__toolz__compose(bag, transform, rules):
     funcs = [transform.first] + list(transform.funcs)
     return _apply_funcs(bag, funcs, rules)
+
+
+def _apply__checkpoint__with_checkpoint(bag, transform, rules):
+    _logger.warning('flowly.dsk.apply does currently not support checkpointing')
+    return apply(transform.transform, bag, rules=rules)
 
 
 def _apply__flowly__tz__apply_concat(bag, transform, rules):

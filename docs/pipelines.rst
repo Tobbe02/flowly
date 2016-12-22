@@ -170,7 +170,7 @@ list of key value pairs.
 For the reduction-by and reduce-by steps, the key of each item is used to define
 the groups.
 
-To lift an existing transform to operate values grouped by the key part of a
+To lift an existing transform to operate on values grouped by the key part of a
 list of key-value pairs use :func:`flowly.tz.kv_transform`.
 For example::
 

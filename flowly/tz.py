@@ -14,9 +14,13 @@ import inspect
 import itertools as it
 import logging
 import operator as op
+import textwrap
 import time
 
 import toolz
+
+from .hashing import base_system, composite_hash
+from .checkpoint import rewrite_checkpoints, checkpoint, with_checkpoint
 
 _logger = logging.getLogger(__name__)
 
@@ -25,6 +29,7 @@ __all__ = [
     'Just',
     'Nothing',
     'Success',
+    'apply',
     'apply_concat',
     'apply_map_concat',
     'build_dict',
@@ -74,6 +79,34 @@ def printf(fmt, *args, **kwargs):
     """Wrapper around print / str.format for interactive use.
     """
     print(fmt.format(*args, **kwargs))
+
+
+def _printf_wrap(fmt, *args, **kwargs):
+    s = fmt.format(*args, **kwargs)
+    s = textwrap.wrap(s, 80)
+    s = u'\n'.join(s)
+    print(s)
+
+
+printf.wrap = _printf_wrap
+
+
+def apply(transform, obj, rewrites=()):
+    """
+    :param Callable[Any,Any] transform:
+        the transform to apply
+
+    :param Any obj:
+        the object to apply the transform to
+
+    :param Iterable[Callable[Callable[Any,Any],Callable[Any,Any]]]:
+        rewrite rules to apply to the transformation before applying it
+        to the the object.
+        This mechanism can for example be used to add checkpointing or logging
+        or the transform.
+    """
+    transform = toolz.pipe(transform, *rewrites)
+    return transform(obj)
 
 
 class itemsetter(object):
@@ -184,6 +217,38 @@ class chained(object):
 
     def __add__(self, other):
         return chained(*(list(self.funcs) + list(other.funcs)))
+
+    def __repr__(self):
+        return 'flowly.tz.chained({})'.format(', '.join(repr(func) for func in self.funcs))
+
+    def __iter__(self):
+        return iter(self.funcs)
+
+
+@base_system.bind(chained)
+@composite_hash
+def base_system_chained(chain, _):
+    return type(chain), list(chain)
+
+
+@rewrite_checkpoints.bind(chained)
+def rewrite_checkpoints_chained(chain, rewrite_checkpoints):
+    funcs = list(chain)
+    if not funcs:
+        return chain
+
+    if not any(isinstance(func, checkpoint) for func in funcs):
+        return chained(*[rewrite_checkpoints(func, rewrite_checkpoints) for func in funcs])
+
+    result = []
+    for func in funcs:
+        if isinstance(func, checkpoint):
+            result = [with_checkpoint(func, chained(*result))]
+
+        else:
+            result.append(rewrite_checkpoints(func, rewrite_checkpoints))
+
+    return chained(*result)
 
 
 class _apply_concat_base(object):
