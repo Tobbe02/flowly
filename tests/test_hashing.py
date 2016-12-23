@@ -2,6 +2,7 @@ from __future__ import print_function, division, absolute_import
 
 from flowly.hashing import functional_hash, base_hash
 
+import pytest
 
 global_func = None
 
@@ -56,17 +57,16 @@ def test_base_hash__lambda():
 
 
 def test_general_object():
+    class foo_object(object):
+        def __init__(self, foo):
+            self.foo = foo
+
     o1 = foo_object('bar')
     o2 = foo_object('bar')
     o3 = foo_object('baz')
 
     assert functional_hash(o1) == functional_hash(o2)
     assert functional_hash(o1) != functional_hash(o3)
-
-
-class foo_object(object):
-    def __init__(self, foo):
-        self.foo = foo
 
 
 def test_base_system__examples():
@@ -76,3 +76,13 @@ def test_base_system__examples():
     base_hash({'1', '2', 3})
 
     assert base_hash(True) != base_hash(1)
+
+
+def test_base_system__classes_in_main():
+    class foo(object):
+        pass
+
+    foo.__module__ = '__main__'
+
+    with pytest.raises(ValueError):
+        base_hash(foo)

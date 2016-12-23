@@ -86,6 +86,9 @@ def base_system_object(o, _):
 
 @base_system.bind(type)
 def base_system_type(t, _):
+    if t.__module__ == '__main__':
+        raise ValueError('cannot hash classes defined in __main__')
+
     return [
         u'T:{}:{}'.format(t.__module__, t.__name__).encode('utf8'),
     ]
