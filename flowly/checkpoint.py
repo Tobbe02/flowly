@@ -69,10 +69,10 @@ def base_system_with_checkpoint(obj, _):
     return type(obj), obj.checkpoint, obj.transform
 
 
-def clear_checkpoints(target, obj=None, tag=None):
+def clear_checkpoints(target, object=None, tag=None):
     """Clear all checkpoints from target that match certain conditions.
 
-    :param Optional[Any] obj:
+    :param Optional[Any] object:
         if given, remove all checkpoints where ``obj`` was used as an input.
 
     :param Optional[str] tag:
@@ -80,8 +80,8 @@ def clear_checkpoints(target, obj=None, tag=None):
     """
     predicates = []
 
-    if obj is not None:
-        obj_hash = compute_hash(functional_system, obj)
+    if object is not None:
+        obj_hash = compute_hash(functional_system, object)
         predicates.append(lambda c_obj_hash, _1, _2: c_obj_hash == obj_hash)
 
     if tag is not None:

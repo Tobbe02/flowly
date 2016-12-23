@@ -1,5 +1,39 @@
-from flowly.checkpoint import checkpoint, add_checkpoints
+from flowly.checkpoint import checkpoint, add_checkpoints, clear_checkpoints
+from flowly.hashing import functional_hash
 from flowly.tz import chained, apply
+
+
+def test_clear_checkpoints_all():
+    _checkpoints = {
+        ('a', 'b', 'c'): 1,
+        ('d', 'e', 'f'): 2,
+    }
+
+    clear_checkpoints(_checkpoints)
+
+    assert _checkpoints == {}
+
+
+def test_clear_checkpoints_tag():
+    _checkpoints = {
+        ('a', 'b', 'c'): 1,
+        ('d', 'e', 'f'): 2,
+    }
+
+    clear_checkpoints(_checkpoints, tag='b')
+
+    assert _checkpoints == {('d', 'e', 'f'): 2}
+
+
+def test_clear_checkpoints_object():
+    _checkpoints = {
+        (functional_hash('a'), 'b', 'c'): 1,
+        (functional_hash('d'), 'e', 'f'): 2,
+    }
+
+    clear_checkpoints(_checkpoints, object='d')
+
+    assert _checkpoints == {(functional_hash('a'), 'b', 'c'): 1}
 
 
 def test_checkpoints__empty():
