@@ -23,10 +23,12 @@ except ImportError:  # pragma: no cover
     import __builtin__ as builtins
 
 try:
-    string_types = [str, unicode]
+    string_types = [unicode]
+    byte_types = [str]
 
 except NameError:  # pragma: no cover
     string_types = [str]
+    byte_types = [bytes]
 
 
 __all__ = [
@@ -94,10 +96,10 @@ def composite_hash(func):
     return impl
 
 
-base_system = Dispatch()
+base_system = Dispatch(name='base_system')
 
 
-@base_system.default
+@base_system.bind(object)
 @composite_hash
 def base_system_object(o, _):
     return type(o), o.__reduce__()
@@ -127,7 +129,7 @@ def base_system_str(o, base_system):
     )
 
 
-@base_system.bind(bytes)
+@base_system.bind(byte_types)
 def base_system_bytes(o, base_system):
     return it.chain(
         [b'2'],
@@ -215,7 +217,7 @@ def base_system_code(code, _):
     ]
 
 
-@base_system.bind_if(lambda obj: type(obj).__module__.startswith('pandas.'))
+@base_system.bind_conditional('pandas')
 def base_system_pandas(base_system):
     import pandas as pd
     import dask.base
@@ -226,7 +228,7 @@ def base_system_pandas(base_system):
         return dask.base.normalize_token(obj)
 
 
-@base_system.bind_if(lambda obj: type(obj).__module__.startswith('numpy.'))
+@base_system.bind_conditional('numpy')
 def base_system_numpy(base_system):
     import numpy as np
     import dask.base
@@ -237,7 +239,7 @@ def base_system_numpy(base_system):
         return dask.base.normalize_token(obj)
 
 
-functional_system = base_system.inherit()
+functional_system = base_system.inherit(name='functional_system')
 
 
 @functional_system.bind(types.CodeType)

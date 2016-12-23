@@ -4,44 +4,63 @@ import inspect
 
 
 class Dispatch(object):
-    def __init__(self, mapping=None, parent=None):
+    def __init__(self, mapping=None, parent=None, name='<unnamed>'):
         if mapping is None:
             mapping = {}
 
+        self.name = name
         self.mapping = mapping
-        self.conditional_bindings = []
+        self.conditional_bindings = {}
         self.parent = parent
 
-    def inherit(self):
+    def inherit(self, name='<unnamed child>'):
         self_type = type(self)
-        return self_type({}, self)
+        return self_type({}, self, name=name)
 
-    def bind(self, type):
+    def bind(self, type, func=None):
         def impl(func):
             if not isinstance(type, list):
-                types = [type]
+                types = {type}
 
             else:
-                types = type
+                types = set(type)
+
+            duplicates = types & set(self.mapping)
+            if duplicates:
+                raise ValueError('rebinding of {} in {}, use inheritance'
+                                 .format(duplicates, self.name))
 
             for t in types:
                 self.mapping[t] = func
+
             return func
+
+        if func is not None:
+            impl(func)
+            return self
 
         return impl
 
-    def bind_if(self, condition):
+    def bind_conditional(self, module, func=None):
         def impl(func):
-            self.conditional_bindings.append((condition, func))
+            self.conditional_bindings[module] = func
             return func
+
+        if func is not None:
+            impl(func)
+            return self
 
         return impl
 
     def default(self, impl):
         self.default_func = impl
+        return self
 
-    def default_func(self, obj, *args, **kwargs):   # pragma: no cover
-        raise ValueError("cannot lookup {} for {}".format(type(obj), obj))
+    def default_func(self, obj, *args, **kwargs):
+        if self.parent is None:
+            raise ValueError("cannot lookup {} for {}".format(type(obj), obj))
+
+        return self.parent.default_func(obj, *args, **kwargs)
 
     def __call__(self, obj, *args, **kwargs):
         f = self.lookup(obj)
@@ -49,23 +68,30 @@ class Dispatch(object):
 
     def lookup(self, obj):
         t = type(obj)
+        match = self._lookup_exact(t)
 
+        if match is not None:
+            return match
+
+        for match in self._lookup_walk_mro(t):
+            return match
+
+        return self.default_func
+
+    def _lookup_exact(self, t):
         try:
             return self.mapping[t]
 
         except KeyError:
             pass
 
-        for match in self._lookup_walk_mro(t):
-            return match
+        if self._lookup_execute_conditional_bindings(t):
+            return self._lookup_exact(t)
 
-        if self.parent is not None:
-            return self.parent.lookup(obj)
+        if self.parent is None:
+            return
 
-        for _ in self._lookup_execute_conditional_bindings(obj):
-            return self.lookup(obj)
-
-        return self.default_func
+        return self.parent._lookup_exact(t)
 
     def _lookup_walk_mro(self, t):
         for alt in inspect.getmro(t):
@@ -79,28 +105,19 @@ class Dispatch(object):
                 self.mapping[t] = match
                 yield match
 
-    def _lookup_execute_conditional_bindings(self, obj):
-        if not self.conditional_bindings:
-            return
+        if self.parent is not None:
+            for match in self.parent._lookup_walk_mro(t):
+                yield match
 
-        matching_binders, non_matching_binders = _split(lambda t: t[0](obj), self.conditional_bindings)
+    def _lookup_execute_conditional_bindings(self, t):
+        root, _1, _2,  = t.__module__.partition('.')
 
-        if len(matching_binders) > 1:
-            raise RuntimeError("multiple condition bindings matched: {}".format(matching_binders))
+        try:
+            func = self.conditional_bindings.pop(root)
 
-        # prune conditional bindings
-        self.conditional_bindings = non_matching_binders
+        except KeyError:
+            return False
 
-        for condition, binder in matching_binders:
-            if condition(obj):
-                binder(self)
-                yield None
-
-
-def _split(pred, seq):
-    result = {True: [], False: []}
-
-    for item in seq:
-        result[pred(item)].append(item)
-
-    return result[True], result[False]
+        else:
+            func(self)
+            return True
