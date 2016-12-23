@@ -114,12 +114,12 @@ def base_system_bytes(o, base_system):
     )
 
 
-@base_system.bind(int)
-def base_system_int(i, base_system):
+@base_system.bind([int, float, bool])
+def base_system_primitives(o, base_system):
     return it.chain(
         [b'2'],
-        base_system(type(i), base_system),
-        [repr(i).encode('utf8')],
+        base_system(type(o), base_system),
+        [repr(o).encode('utf8')],
     )
 
 

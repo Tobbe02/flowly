@@ -67,3 +67,12 @@ def test_general_object():
 class foo_object(object):
     def __init__(self, foo):
         self.foo = foo
+
+
+def test_base_system__examples():
+    base_hash(2.0)
+    base_hash(True)
+    base_hash(False)
+    base_hash({'1', '2', 3})
+
+    assert base_hash(True) != base_hash(1)
