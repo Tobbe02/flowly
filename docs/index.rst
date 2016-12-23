@@ -20,6 +20,7 @@ Contents:
 
    examples
    pipelines
+   checkpoints
    distributed
    proxy
    dataframes

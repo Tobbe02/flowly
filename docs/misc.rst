@@ -1,14 +1,42 @@
 Miscellaneous helpers
 =====================
 
-TODO: add overview
+Output Helper:
+
+- :func:`flowly.ipy.printmk`
+- :func:`flowly.tz.printf`
+- :func:`flowly.tz.show`
+
+Monads:
+
+- :func:`flowly.tz.optional`
+- :func:`flowly.tz.try_call`
+
+Hashing:
+
+- :func:`flowly.hashing.base_hash`
+- :func:`flowly.hashing.functional_hash`
+
+Uncategorized:
+
+- :func:`flowly.ipy.add_toc`
+- :func:`flowly.tz.raise_`
+- :func:`flowly.tz.timed`
 
 Reference
 ---------
 
-.. autofunction:: flowly.tz.optional
+.. autofunction:: flowly.hashing.base_hash
 
-.. autofunction:: flowly.tz.try_call
+.. autofunction:: flowly.hashing.functional_hash
+
+.. autofunction:: flowly.ipy.add_toc
+
+.. autofunction:: flowly.ipy.printmk
+
+.. autofunction:: flowly.tz.printf
+
+.. autofunction:: flowly.tz.optional
 
 .. autofunction:: flowly.tz.raise_
 
@@ -39,4 +67,4 @@ Reference
 
 .. autofunction:: flowly.tz.timed(tag=None)
 
-.. autofunction:: flowly.ipy.add_toc
+.. autofunction:: flowly.tz.try_call

@@ -40,10 +40,29 @@ __all__ = [
 
 
 def base_hash(obj):
+    """A hash function for pyhton objects using `SHA1`.
+
+    It is designed to be used in lieu of equality testing.
+    The basic thought being: if it is good enough for git, it is good enough
+    for us :).
+    """
     return compute_hash(base_system, obj)
 
 
 def functional_hash(obj):
+    """A hash function designed to test for functional equivalence.
+
+    An extension of :func:`flowly.hashing.base_hash` to compare functions by
+    functional equivalence.
+    Two functions will have the same hash regardless of the place they are
+    defined in, as long everything else stays the same.
+
+    The motivation is to allow redefintions in interactive environments such
+    as jupyter notebooks without changing the hash.
+    Since the execution count of a cell is encoded in its name in jupyter
+    notebooks, simply reexecuting a definition will change the hash for other
+    implementations.
+    """
     return compute_hash(functional_system, obj)
 
 

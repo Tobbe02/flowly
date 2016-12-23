@@ -77,6 +77,14 @@ show = _ShowImpl()
 
 def printf(fmt, *args, **kwargs):
     """Wrapper around print / str.format for interactive use.
+
+    To limit the linelength use ``printf.wrap(fmt, *args, **kwargs)`` which will
+    wrap the input at 80 characters.
+
+    Examples::
+
+        printf('result: {:.2%}', change)
+        printf.wrap('really [...] long line: {:.2%}', change)
     """
     print(fmt.format(*args, **kwargs))
 
@@ -104,6 +112,7 @@ def apply(transform, obj, rewrites=()):
         to the the object.
         This mechanism can for example be used to add checkpointing or logging
         or the transform.
+        Each callable should accept a transform and return another transform.
     """
     transform = toolz.pipe(transform, *rewrites)
     return transform(obj)
@@ -611,9 +620,9 @@ def optional(val):
 
     Usage::
 
-        val = +optional(val).or_else(default_value).get()
+        val = +optional(val).or_else(default_value)
 
-        val = +optional(val).or_else_call(expensive_function, arg1, arg2).get()
+        val = +optional(val).or_else_call(expensive_function, arg1, arg2)
     """
     return Just(val) if val is not None else Nothing()
 
@@ -623,7 +632,7 @@ def try_call(func, *args, **kwargs):
 
     Usage::
 
-        result = +try_call(func, arg1, arg2).recover(altnative_operation).get()
+        result = +try_call(func, arg1, arg2).recover(altnative_operation, *args)
     """
     try:
         result = func(*args, **kwargs)

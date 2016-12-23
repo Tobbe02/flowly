@@ -190,6 +190,11 @@ For example::
 Reference
 ---------
 
+Execution
+~~~~~~~~~
+
+.. autofunction:: flowly.tz.apply
+
 Buildings Blocks
 ~~~~~~~~~~~~~~~~
 

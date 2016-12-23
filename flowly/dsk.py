@@ -82,6 +82,9 @@ def apply_to_local(
 
     :param Optional[Iterable] rules:
         See :func:`flowly.dsk.apply`.
+
+    :param Iterable[Callable[Callable[Any,Any],Callable[Any,Any]]]:
+        See :func:`flowly.tz.apply`.
     """
     obj = db.from_sequence(obj, npartitions=npartitions)
     obj = apply(transform, obj, rewrites=rewrites, rules=rules)
@@ -106,6 +109,9 @@ def apply(transform, obj, rules=None, rewrites=()):
         Each rule should be an object with two functions ``match`` and
         ``apply``. The first matching rule will be applied and no subsequent
         rule will be checked.
+
+    :param Iterable[Callable[Callable[Any,Any],Callable[Any,Any]]]:
+        See :func:`flowly.tz.apply`.
     """
     if rules is None:
         rules = get_default_rules()
