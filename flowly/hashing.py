@@ -196,6 +196,28 @@ def base_system_code(code, _):
     ]
 
 
+@base_system.bind_if(lambda obj: type(obj).__module__.startswith('pandas.'))
+def base_system_pandas(base_system):
+    import pandas as pd
+    import dask.base
+
+    @base_system.bind([pd.Index, pd.DataFrame, pd.Series])
+    @composite_hash
+    def base_system_pandas(obj, _):
+        return dask.base.normalize_token(obj)
+
+
+@base_system.bind_if(lambda obj: type(obj).__module__.startswith('numpy.'))
+def base_system_numpy(base_system):
+    import numpy as np
+    import dask.base
+
+    @base_system.bind([np.ndarray, np.dtype, np.generic])
+    @composite_hash
+    def base_system_numpy(obj, _):
+        return dask.base.normalize_token(obj)
+
+
 functional_system = base_system.inherit()
 
 

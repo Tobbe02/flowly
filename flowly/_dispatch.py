@@ -9,6 +9,7 @@ class Dispatch(object):
             mapping = {}
 
         self.mapping = mapping
+        self.conditional_bindings = []
         self.parent = parent
 
     def inherit(self):
@@ -25,6 +26,13 @@ class Dispatch(object):
 
             for t in types:
                 self.mapping[t] = func
+            return func
+
+        return impl
+
+    def bind_if(self, condition):
+        def impl(func):
+            self.conditional_bindings.append((condition, func))
             return func
 
         return impl
@@ -48,14 +56,51 @@ class Dispatch(object):
         except KeyError:
             pass
 
-        for alt in inspect.getmro(t):
-            try:
-                return self.mapping[t]
-
-            except KeyError:
-                pass
+        for match in self._lookup_walk_mro(t):
+            return match
 
         if self.parent is not None:
             return self.parent.lookup(obj)
 
+        for _ in self._lookup_execute_conditional_bindings(obj):
+            return self.lookup(obj)
+
         return self.default_func
+
+    def _lookup_walk_mro(self, t):
+        for alt in inspect.getmro(t):
+            try:
+                match = self.mapping[alt]
+
+            except KeyError:
+                pass
+
+            else:
+                self.mapping[t] = match
+                yield match
+
+    def _lookup_execute_conditional_bindings(self, obj):
+        if not self.conditional_bindings:
+            return
+
+        matching_binders, non_matching_binders = _split(lambda t: t[0](obj), self.conditional_bindings)
+
+        if len(matching_binders) > 1:
+            raise RuntimeError("multiple condition bindings matched: {}".format(matching_binders))
+
+        # prune conditional bindings
+        self.conditional_bindings = non_matching_binders
+
+        for condition, binder in matching_binders:
+            if condition(obj):
+                binder(self)
+                yield None
+
+
+def _split(pred, seq):
+    result = {True: [], False: []}
+
+    for item in seq:
+        result[pred(item)].append(item)
+
+    return result[True], result[False]

@@ -1,8 +1,10 @@
 from __future__ import print_function, division, absolute_import
 
-from flowly.hashing import functional_hash, base_hash
-
+import numpy as np
+import pandas as pd
 import pytest
+
+from flowly.hashing import functional_hash, base_hash
 
 global_func = None
 
@@ -76,6 +78,19 @@ def test_base_system__examples():
     base_hash({'1', '2', 3})
 
     assert base_hash(True) != base_hash(1)
+
+
+def test_base_system__pandas():
+    assert (
+        base_hash(pd.DataFrame({'a': [1, 2, 3]})) ==
+        base_hash(pd.DataFrame({'a': [1, 2, 3]}))
+    )
+
+    assert base_hash(pd.Series([1, 2, 3])) == base_hash(pd.Series([1, 2, 3]))
+
+
+def test_base_system__numpy():
+    assert base_hash(np.array([1, 2, 3])) == base_hash(np.array([1, 2, 3]))
 
 
 def test_base_system__classes_in_main():
