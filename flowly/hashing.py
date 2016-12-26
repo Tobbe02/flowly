@@ -155,6 +155,11 @@ def base_system_none_type(obj, _):
     return [b'0']
 
 
+@base_system.bind(types.ModuleType)
+def base_system_module(obj, _):
+    return [b'M' + obj.__name__.encode('utf8')]
+
+
 @base_system.bind(string_types)
 def base_system_str(o, base_system):
     return it.chain(

@@ -122,3 +122,10 @@ def test_recursive_hash():
     l.append(l)
 
     functional_hash(l)
+
+
+def test_hash_modules():
+    h1 = base_hash(np)
+    h2 = base_hash(np)
+
+    assert h1 == h2
