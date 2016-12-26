@@ -4,17 +4,17 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from flowly.hashing import functional_hash, base_hash
+from flowly.hashing import functional_hash, base_hash, get_hash_parts, functional_system
 
 global_func = None
 
 
-def times_2(x):
-    return 2 * x
+def times_2():
+    return lambda x: 2 * x
 
 
-def times_3(x):
-    return 3 * x
+def times_3():
+    return lambda x: 3 * x
 
 
 def test_functional_hash__lambda():
@@ -35,11 +35,11 @@ def test_functional_hash__lambda__closure():
 def test_functional_hash__lamba_globals():
     global global_func
 
-    global_func = times_2
+    global_func = times_2()
     hash_1 = functional_hash(lambda x: global_func(x) - 3)
     hash_2 = functional_hash(lambda x: global_func(x) - 3)
 
-    global_func = times_3
+    global_func = times_3()
     hash_3 = functional_hash(lambda x: global_func(x) - 3)
 
     assert hash_1 == hash_2
@@ -67,6 +67,14 @@ def test_general_object():
     o2 = foo_object('bar')
     o3 = foo_object('baz')
 
+    print('o1')
+    print(get_hash_parts(functional_system, o1))
+    print(get_hash_parts(functional_system, o1, recursive=False))
+
+    print('o3')
+    print(get_hash_parts(functional_system, o3))
+    print(get_hash_parts(functional_system, o3, recursive=False))
+
     assert functional_hash(o1) == functional_hash(o2)
     assert functional_hash(o1) != functional_hash(o3)
 
@@ -76,6 +84,7 @@ def test_base_system__examples():
     base_hash(True)
     base_hash(False)
     base_hash({'1', '2', 3})
+    base_hash({int: 'int', float: 'float', 'int': int, 'float': float})
 
     assert base_hash(True) != base_hash(1)
 
@@ -101,3 +110,15 @@ def test_base_system__classes_in_main():
 
     with pytest.raises(ValueError):
         base_hash(foo)
+
+
+def test_recursive_hash():
+    o = {}
+    o['o'] = o
+
+    functional_hash(o)
+
+    l = []
+    l.append(l)
+
+    functional_hash(l)

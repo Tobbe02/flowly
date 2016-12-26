@@ -73,12 +73,47 @@ def is_lambda(func):
 
 
 def compute_hash(hash_system, obj):
+    if not isinstance(hash_system, RecursiveHash):
+        hash_system = RecursiveHash(hash_system)
     h = hashlib.sha1()
 
     for part in hash_system(obj, hash_system):
         h.update(part)
 
     return h.hexdigest()
+
+
+def get_hash_parts(hash_system, obj, recursive=True):
+    if recursive:
+        hash_system = RecursiveHash(hash_system)
+    return list(hash_system(obj, hash_system))
+
+
+class RecursiveHash(object):
+    def __init__(self, hash_system):
+        self.hash_system = hash_system
+        self.object_ids = dict()
+        self.seen_objects = dict()
+        self.next_id = 0
+
+    def __call__(self, obj, hash_system):
+        if type(obj) in {int, float, str, bytes, bool}:
+            return self.hash_system(obj, self)
+
+        obj_id = id(obj)
+
+        if obj_id in self.seen_objects:
+            return [b'R' + repr(self.object_ids[obj_id]).encode('utf8')]
+
+        # keep objects alive during hashing
+        self.seen_objects[obj_id] = obj
+        self.object_ids[obj_id] = self.next_id
+        self.next_id += 1
+
+        return it.chain(
+            [b'D' + repr(self.object_ids[obj_id]).encode('utf8')],
+            self.hash_system(obj, self),
+        )
 
 
 def composite_hash(func):
@@ -155,8 +190,14 @@ def base_system_list(l, _):
 
 @base_system.bind(dict)
 @composite_hash
-def base_system_dict(d, _):
-    return [type(d)] + sorted(d.items())
+def base_system_dict(d, hash_system):
+    return (
+        [type(d)] +
+        sorted(
+            (compute_hash(hash_system, k), compute_hash(hash_system, v))
+            for (k, v) in d.items()
+        )
+    )
 
 
 @base_system.bind(types.FunctionType)
