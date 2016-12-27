@@ -16,6 +16,7 @@ Hashing:
 
 - :func:`flowly.hashing.base_hash`
 - :func:`flowly.hashing.functional_hash`
+- :func:`flowly.hashing.ignore_globals`
 
 Uncategorized:
 
@@ -29,6 +30,8 @@ Reference
 .. autofunction:: flowly.hashing.base_hash
 
 .. autofunction:: flowly.hashing.functional_hash
+
+.. autofunction:: flowly.hashing.ignore_globals
 
 .. autofunction:: flowly.ipy.add_toc
 

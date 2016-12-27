@@ -52,6 +52,29 @@ Memory can be freed by calling ``_checkpoints.clear()`` to remove all execution
 results or by using :func:`flowly.checkpoint.clear_checkpoints` for more fine
 grained control.
 
+
+Stateful transformations
+------------------------
+
+At times transformations inside a chain may be stateful.
+For example, requests to external services may keep track of prior requests to
+implement rate limiting.
+In such cases, checkpointing will not work as expected, since the internal state
+of the transform will change with each request.
+To circumvent such problems, use the decorator
+:func:`flowly.hashing.ignore_globals`.
+
+Say `client` implements rate limiting, but the result of ``execute_request`` is
+full determined by the argument.
+Then the use of ``client`` should be decorated as::
+
+    @ignore_globals('client')
+    def execute_request(arg):
+        return client.request(arg=arg)
+
+Even though, the state of ``client`` will change with each request, it will
+only be executed once for each value of ``arg``.
+
 Reference
 ---------
 

@@ -195,6 +195,8 @@ Execution
 
 .. autofunction:: flowly.tz.apply
 
+.. autofunction:: flowly.tz.pipe
+
 Buildings Blocks
 ~~~~~~~~~~~~~~~~
 

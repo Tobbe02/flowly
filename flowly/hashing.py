@@ -249,6 +249,22 @@ def get_globals(func):
 
 
 def ignore_globals(*names):
+    """Mark globals used in a function as irrelevant to hashing.
+
+    To ignore global variables ``a`` and ``b`` when hashing the function
+    ``func``, use::
+
+        @ignore_globals('a', 'b')
+        def func(c):
+            ...
+
+    To ignore all globals used when hashing the function ``func``, use::
+
+        @ignore_globals()
+        def func(c):
+            ...
+
+    """
     def impl(func):
         if not names:
             func._ignore_globals = _all_globals

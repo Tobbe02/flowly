@@ -108,7 +108,7 @@ def pipe(obj, *transform, **kwargs):
     :param Callable[Any,Any] transform:
         the transformation steps are applied in sequence to the passed object
 
-    :param Iterable[Callable[Callable[Any,Any],Callable[Any,Any]]]:
+    :param Iterable[Callable[Callable[Any,Any],Callable[Any,Any]]] rewrites:
         *keyword-only* argument, see :func:`flowly.tz.apply` for a description
     """
     return apply(chained(*transform), obj, **kwargs)
