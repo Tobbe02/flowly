@@ -254,8 +254,16 @@ def test_printf():
     printf('{0:.2%} {key} {foo}', 0.005, key='value', foo='bar')
 
 
+def test_printf__empty():
+    printf()
+
+
 def test_printf__wrap():
     printf.wrap('{0:.2%} {key} {foo}', 0.005, key='value', foo='bar')
+
+
+def test_printf__wrap__empty():
+    printf.wrap()
 
 
 def test_timed():

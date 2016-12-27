@@ -75,7 +75,7 @@ class _ShowImpl(object):
 show = _ShowImpl()
 
 
-def printf(fmt, *args, **kwargs):
+def printf(*args, **kwargs):
     """Wrapper around print / str.format for interactive use.
 
     To limit the linelength use ``printf.wrap(fmt, *args, **kwargs)`` which will
@@ -86,10 +86,20 @@ def printf(fmt, *args, **kwargs):
         printf('result: {:.2%}', change)
         printf.wrap('really [...] long line: {:.2%}', change)
     """
+    if not args:
+        print()
+        return
+
+    fmt, args = args[0], args[1:]
     print(fmt.format(*args, **kwargs))
 
 
-def _printf_wrap(fmt, *args, **kwargs):
+def _printf_wrap(*args, **kwargs):
+    if not args:
+        print()
+        return
+
+    fmt, args = args[0], args[1:]
     s = fmt.format(*args, **kwargs)
     s = textwrap.wrap(s, 80)
     s = u'\n'.join(s)

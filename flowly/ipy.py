@@ -1,9 +1,14 @@
 from __future__ import print_function, division, absolute_import
 
 
-def printmk(fmt, *args, **kwargs):
+def printmk(*args, **kwargs):
     """Print markdown in ipython.
     """
+    if not args:
+        return
+
+    fmt, args = args[0], args[1:]
+
     from IPython.display import display_markdown, Markdown
     display_markdown(Markdown(fmt.format(*args, **kwargs)))
 
