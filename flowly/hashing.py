@@ -2,6 +2,7 @@
 """
 from __future__ import print_function, division, absolute_import
 
+import builtins
 import functools as ft
 import hashlib
 import itertools as it
@@ -15,12 +16,6 @@ try:
 
 except AttributeError:
     import dis3 as dis
-
-try:
-    import builtins
-
-except ImportError:  # pragma: no cover
-    import __builtin__ as builtins
 
 try:
     string_types = [unicode]

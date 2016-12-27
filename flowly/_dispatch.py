@@ -52,6 +52,21 @@ class Dispatch(object):
 
         return impl
 
+    def bind_rule(self, module, condition):
+        bound = self.mapping.setdefault(module, RuleDispatch())
+        assert isinstance(bound, RuleDispatch)
+
+        def bind_rule(rule):
+            bound.bind(condition, rule)
+            return rule
+
+        return bind_rule
+
+    def bind_rule_default(self, module):
+        bound = self.mapping.setdefault(module, RuleDispatch())
+        assert isinstance(bound, RuleDispatch)
+        return bound.default
+
     def default(self, impl):
         self.default_func = impl
         return self
@@ -121,3 +136,30 @@ class Dispatch(object):
         else:
             func(self)
             return True
+
+
+class RuleDispatch(object):
+    def __init__(self, rules=()):
+        self.rules = list(rules)
+
+    def bind(self, condition, rule):
+        self.rules.append((condition, rule))
+        return self
+
+    def default(self, func):
+        self.default_func = func
+        return func
+
+    def default_func(self, *args, **kwargs):
+        raise NoMatchError('no match')
+
+    def __call__(self, *args, **kwargs):
+        for condition, rule in self.rules:
+            if condition(*args, **kwargs):
+                return rule(*args, **kwargs)
+
+        self.default_func(*args, **kwargs)
+
+
+class NoMatchError(ValueError):
+    pass
