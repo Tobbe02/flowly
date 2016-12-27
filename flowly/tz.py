@@ -640,6 +640,21 @@ class kv_reductionby(object):
 collect = reduction(None, list)
 
 
+def tupled(func):
+    """Decorator like Scala's ``Function.tupled``.
+
+    Example::
+
+        t = (1, 2)
+        tupled(lambda a, b: a + b)(t)
+    """
+    @ft.wraps(func)
+    def impl(t):
+        return func(*t)
+
+    return impl
+
+
 def optional(val):
     """Wrap any value with the optional moand.
 

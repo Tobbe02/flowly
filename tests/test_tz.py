@@ -27,6 +27,7 @@ from flowly.tz import (
     seq,
     show,
     timed,
+    tupled,
     try_call,
 )
 
@@ -274,6 +275,10 @@ def test_timed():
 def test_timed_with_tag():
     with timed(tag='operation'):
         pass
+
+
+def test_tupled():
+    assert tupled(lambda a, b: a + b)((1, 2)) == 3
 
 
 def test_optional__example():
