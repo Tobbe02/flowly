@@ -18,6 +18,15 @@ def test_as_frame():
     pdt.assert_frame_equal(actual, expected)
 
 
+def test_as_frame__mulitple_arguments():
+    actual = as_frame(dict(foo=[1, 2, 3]), bar=[4, 5, 6])
+    expected = pd.DataFrame({
+        'foo': [1, 2, 3],
+        'bar': [4, 5, 6],
+    }, columns=['foo', 'bar'])
+    pdt.assert_frame_equal(actual, expected)
+
+
 def test_dfply__example():
     df = pd.DataFrame({'a': [1, 2, 3], 'b': [4, 5, 6]})
 

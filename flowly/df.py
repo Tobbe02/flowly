@@ -1,8 +1,10 @@
 from __future__ import print_function, division, absolute_import
 
+import builtins
+import collections
+
 import pandas as pd
 import toolz
-import builtins
 
 from ._dispatch import Dispatch
 from .tz import chained
@@ -13,10 +15,28 @@ __all__ = [
 ]
 
 
-def as_frame(**kwargs):
+def as_frame(*args, **kwargs):
     """Helper function to simplify code generating dataframes.
     """
-    return pd.DataFrame(kwargs)
+    dfs = list(
+        # exhaust iterators
+        pd.DataFrame(arg) if isinstance(arg, collections.Mapping) else pd.DataFrame(list(arg))
+        for arg in args
+    )
+
+    if kwargs:
+        dfs.append(pd.DataFrame(kwargs))
+
+    if not dfs:
+        return pd.DataFrame()
+
+    current, rest = dfs[0], dfs[1:]
+
+    for df in rest:
+        for k in df.columns:
+            current[k] = df[k]
+
+    return current
 
 
 def add_dfply_support(transform):
