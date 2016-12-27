@@ -6,6 +6,7 @@ import pytest
 
 from flowly.hashing import functional_hash
 from flowly.tz import (
+    pipe,
     apply_concat,
     apply_map_concat,
     build_dict,
@@ -28,6 +29,11 @@ from flowly.tz import (
     timed,
     try_call,
 )
+
+
+def test_apply():
+    assert pipe(5, lambda x: 2 * x, lambda x: x - 3) == 7
+    assert pipe(5, lambda x: 2 * x, rewrites=[lambda f: lambda x: x + 5]) == 10
 
 
 def test_chained__example():
