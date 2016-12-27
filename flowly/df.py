@@ -52,6 +52,7 @@ def dfply_support_default(obj, _):
 
 @dfply_support.bind(chained)
 def dfply_support_chained(chain, dfply_support):
+    # TODO: join as many steps as possible (to avoid copies)
     return chained(*[
         dfply_support(func, dfply_support)
         for func in chain
