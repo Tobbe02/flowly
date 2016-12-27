@@ -198,10 +198,7 @@ def base_system_list(l, _):
 def base_system_dict(d, hash_system):
     return (
         [type(d)] +
-        sorted(
-            (compute_hash(hash_system, k), compute_hash(hash_system, v))
-            for (k, v) in d.items()
-        )
+        sorted((repr(k), v) for (k, v) in d.items())
     )
 
 
@@ -211,7 +208,6 @@ def base_system_function(func, _):
     if not is_lambda(func) and func.__module__ != '__main__':
         return type(func), u'{}:{}'.format(func.__module__, func.__name__)
 
-    # TODO: handle referenced gloabal variables
     if func.__closure__ is not None:
         closure = tuple(c.cell_contents for c in func.__closure__)
 
@@ -244,7 +240,29 @@ def get_globals(func):
         if inst.opname == 'LOAD_GLOBAL':
             result.add(inst.argval)
 
-    return result
+    ignore_globals = getattr(func, '_ignore_globals', set())
+
+    if ignore_globals is _all_globals:
+        return []
+
+    return [i for i in result if i not in ignore_globals]
+
+
+def ignore_globals(*names):
+    def impl(func):
+        if not names:
+            func._ignore_globals = _all_globals
+
+        else:
+            func._ignore_globals = set(names)
+
+        return func
+
+    return impl
+
+
+class _all_globals(object):
+    pass
 
 
 @base_system.bind(types.BuiltinFunctionType)

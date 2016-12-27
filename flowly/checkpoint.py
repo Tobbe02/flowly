@@ -45,10 +45,10 @@ class with_checkpoint(object):
         key = self._compute_key(obj)
 
         if key in self.checkpoint:
-            _logger.info('restore object at %r', self.checkpoint.tag)
+            _logger.info('restore object at %r (key %s)', self.checkpoint.tag, key)
             return self.checkpoint[key]
 
-        _logger.info('compute, then store object at %r', self.checkpoint.tag)
+        _logger.info('compute, then store object at %r (key %s)', self.checkpoint.tag, key)
         obj = self.transform(obj)
         self.checkpoint[key] = obj
         return obj
