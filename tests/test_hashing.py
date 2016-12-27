@@ -4,7 +4,13 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from flowly.hashing import functional_hash, base_hash, get_hash_parts, functional_system
+from flowly.hashing import (
+    base_hash,
+    get_hash_parts,
+    functional_hash,
+    functional_system,
+    ignore_globals,
+)
 
 global_func = None
 
@@ -44,6 +50,30 @@ def test_functional_hash__lamba_globals():
 
     assert hash_1 == hash_2
     assert hash_1 != hash_3
+
+
+def test_functional_hash__lamba_globals_ignore_all():
+    global global_func
+
+    global_func = times_2()
+    hash_1 = functional_hash(ignore_globals()(lambda x: global_func(x) - 3))
+
+    global_func = times_3()
+    hash_2 = functional_hash(ignore_globals()(lambda x: global_func(x) - 3))
+
+    assert hash_1 == hash_2
+
+
+def test_functional_hash__lamba_globals_ignore_one():
+    global global_func
+
+    global_func = times_2()
+    hash_1 = functional_hash(ignore_globals('global_func')(lambda x: global_func(x) - 3))
+
+    global_func = times_3()
+    hash_2 = functional_hash(ignore_globals('global_func')(lambda x: global_func(x) - 3))
+
+    assert hash_1 == hash_2
 
 
 def test_functional_hash__builtins():
