@@ -1,4 +1,35 @@
+"""Helper functions to simplify working with ipython.
+
+Relevant documentation:
+
+* https://github.com/ipython/ipython/wiki/Dev:-Javascript-Events
+* https://github.com/jupyter/notebook/blob/master/docs/source/comms.rst
+
+"""
 from __future__ import print_function, division, absolute_import
+
+import base64
+import io
+import json
+
+exec_js_comm = None
+
+
+def init(components={'comms', 'toc'}):
+    """Execute javascript initializations inside the notebook.
+
+    :param Set[str] components:
+        Which components to initialize.
+        Currently the following components are known:
+
+        * `comms`: to allow executing javascript code inside the notebook
+        * `toc`:  to add a table of contents to the notebook.
+    """
+    if 'comms' in components:
+        add_comms()
+
+    if 'toc' in components:
+        add_toc()
 
 
 def printmk(*args, **kwargs):
@@ -11,6 +42,113 @@ def printmk(*args, **kwargs):
 
     from IPython.display import display_markdown, Markdown
     display_markdown(Markdown(fmt.format(*args, **kwargs)))
+
+
+def notify(message, tag=None):
+    """Send a browser notification.
+
+    :param str message:
+        the message to show
+
+    :param str tag:
+        if given, message with the same tag will replace on another.
+        This option may be useful to prevent cluttering up the user's screen.
+
+    Requires a initialization of the `commms` component, via
+    :func:`flowly.ipy.init`.
+    """
+    options = {}
+    if tag is not None:
+        options['tag'] = tag
+
+    exec_javascript(
+        'new Notification({message}, {options});',
+        message=json.dumps(message),
+        options=json.dumps(options),
+    )
+
+
+def download_csv(df, filename='data.csv', **to_csv_kwargs):
+    """Trigger the download of a CSV representation of the passed dataframe.
+
+    :param pandas.DataFrame:
+        the dataframe to download
+
+    :param filename:
+        the filename that is used to save the file under
+
+    :param to_csv_kwargs:
+        keyword arguments that are passed verbatim to `df.to_csv`
+
+    Requires a initialization of the `commms` component, via
+    :func:`flowly.ipy.init`.
+    """
+    encoding = to_csv_kwargs.get('encoding', 'utf-8')
+
+    fobj = io.StringIO()
+    df.to_csv(fobj, **to_csv_kwargs)
+    content = fobj.getvalue()
+
+    url = u'data:text/csv,base64,' + base64.b64encode(content.encode(encoding)).decode('ascii')
+
+    exec_javascript(
+        '''
+            var link = document.createElement("a");
+            link.download = {filename};
+            link.href = {url};
+            link.click();
+        ''',
+        url=json.dumps(url),
+        filename=json.dumps(filename),
+    )
+
+
+def add_comms():
+    """Initialize the comms used for communication.
+    """
+    from IPython.display import display_javascript, Javascript
+    display_javascript(Javascript(init_comms_javascript))
+
+
+def exec_javascript(source, **kwargs):
+    """Execute the passed javascript source inside the notebook environment.
+
+    Requires a prior call to ``init_comms()``.
+    """
+    global exec_js_comm
+
+    if exec_js_comm is None:
+        from ipykernel.comm import Comm
+        comm = Comm("flowly_exec_js", {})
+
+    if kwargs:
+        source = source.format(**kwargs)
+
+    comm.send({"source": source})
+
+
+init_comms_javascript = '''
+(function() {
+    window.flowly_exec_js = function(msg) {
+        var payload = msg['content']['data'];
+        eval('' + payload['source']);
+    }
+
+    function register_comm() {
+        Jupyter.notebook.kernel.comm_manager.register_target('flowly_exec_js', function(comm, msg){
+            comm.on_msg(window.flowly_exec_js);
+        });
+
+    }
+
+    if(Jupyter.notebook.kernel != null) {
+        register_comm();
+    }
+    else {
+        $([IPython.events]).on("kernel_ready.Kernel", register_comm);
+    }
+})();
+'''
 
 
 def add_toc():  # pragma: no cover

@@ -7,6 +7,12 @@ Output Helper:
 - :func:`flowly.tz.printf`
 - :func:`flowly.tz.show`
 
+Notebook utilities:
+
+- :func:`flowly.ipy.init`
+- :func:`flowly.ipy.notify`
+- :func:`flowly.ipy.download_csv`
+
 Monads:
 
 - :func:`flowly.tz.optional`
@@ -20,7 +26,6 @@ Hashing:
 
 Uncategorized:
 
-- :func:`flowly.ipy.add_toc`
 - :func:`flowly.tz.raise_`
 - :func:`flowly.tz.timed`
 
@@ -33,7 +38,11 @@ Reference
 
 .. autofunction:: flowly.hashing.ignore_globals
 
-.. autofunction:: flowly.ipy.add_toc
+.. autofunction:: flowly.ipy.download_csv
+
+.. autofunction:: flowly.ipy.init
+
+.. autofunction:: flowly.ipy.notify
 
 .. autofunction:: flowly.ipy.printmk
 
