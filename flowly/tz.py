@@ -639,7 +639,7 @@ class kv_reductionby(object):
         ]
 
 
-collect = reduction(None, list)
+collect = kv_reductionby(None, list)
 
 
 def tupled(func):
