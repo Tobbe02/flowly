@@ -32,6 +32,28 @@ def init(components={'comms', 'toc'}):
         add_toc()
 
 
+def set_default_indent(num_spaces):
+    """Only takes effect for new cells.
+    """
+    from IPython.display import Javascript, display_javascript
+    display_javascript(Javascript('''
+        (function() {
+            "use strict";
+
+            if(require('base/js/namespace').notebook._fully_loaded){
+                run();
+            }
+            else{
+                require('base/js/events').on('notebook_loaded.Notebook', run);
+            }
+
+            function run() {
+                require("notebook/js/cell").Cell.options_default.cm_config.indentUnit = %s;
+            }
+        })()
+    ''' % json.dumps(num_spaces)))
+
+
 def printmk(*args, **kwargs):
     """Print markdown in ipython.
     """
@@ -141,7 +163,7 @@ init_comms_javascript = '''
 
     }
 
-    if(Jupyter.notebook.kernel != null) {
+    if(Jupyter.notebook.kernel) {
         register_comm();
     }
     else {
@@ -171,11 +193,22 @@ def add_toc():  # pragma: no cover
 js_source = '''
 (function(){
     "use strict";
-    var div = ensureContainer()
 
-    setupStyle();
-    registerEvents()
-    updateTOC();
+    var Jupyter = require('base/js/namespace');
+    if(Jupyter.notebook._fully_loaded){
+        run();
+    }
+    else{
+        require('base/js/events').on('notebook_loaded.Notebook', run);
+    }
+
+    function run() {
+        var div = ensureContainer()
+
+        setupStyle();
+        registerEvents()
+        updateTOC();
+    }
 
     function setupStyle() {
         var site = $('#site');
