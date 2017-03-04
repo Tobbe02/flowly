@@ -44,12 +44,14 @@ __all__ = [
     'kv_reduceby',
     'kv_reductionby',
     'kv_valmap',
+    'not_none',
     'optional',
     'printf',
     'raise_',
     'reduceby',
     'reduction',
     'reductionby',
+    'sliced',
     'seq',
     'show',
     'timed',
@@ -655,6 +657,10 @@ def tupled(func):
     return impl
 
 
+def sliced(iterable, *slice_args):
+    return list(it.islice(iterable, *slice_args))
+
+
 def optional(val):
     """Wrap any value with the optional moand.
 
@@ -665,6 +671,9 @@ def optional(val):
         val = +optional(val).or_else_call(expensive_function, arg1, arg2)
     """
     return Just(val) if val is not None else Nothing()
+
+
+not_none = optional
 
 
 def try_call(func, *args, **kwargs):
