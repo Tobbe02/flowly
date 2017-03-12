@@ -380,11 +380,9 @@ def test_flowly_kv_transform__concat(executor):
 @pytest.mark.parametrize('executor', executors)
 def test_flowly_kv_transform__collect(executor):
     actual = executor(
-        kv_transform(
-            chained(
-                collect,
-                map(sorted)
-            )
+        chained(
+            collect,
+            kv_valmap(sorted)
         ),
         [(i % 2, i) for i in [1, 2, 3, 4, 5, 6, 7]],
         npartitions=3,
