@@ -58,7 +58,13 @@ class RecurrentWrapper(Layer):
         this class is still highly in flux and does only work with tensoflow atm.
 
     """
-    def __init__(self, input, output, bind, stateful=False, return_sequences=False, **kwargs):
+    def __init__(
+            self, input, output, bind,
+            sequence_input=(),
+            stateful=False,
+            return_sequences=False,
+            **kwargs
+    ):
         if stateful:
             raise RuntimeError('RecurrentWrapper does not support statefule transforms currently')
 
@@ -69,18 +75,19 @@ class RecurrentWrapper(Layer):
         self.stateful = stateful
         self.return_sequences = return_sequences
 
-        self.external_input = list(input)
-        self.external_output = list(output)
+        self.external_input = self._ensure_list(input)
+        self.external_sequence_input = self._ensure_list(sequence_input)
+        self.external_output = self._ensure_list(output)
 
         self.state_input, self.state_output, self.final_output_map = build_recurrence_wrapper(
-            self.external_input,
+            self.external_input + self.external_sequence_input,
             self.external_output,
             self.bindings,
             build_input,
         )
 
         self.step_model = Container(
-            input=self.external_input + self.state_input,
+            input=self.external_input + self.external_sequence_input + self.state_input,
             output=self.state_output,
         )
 
@@ -89,6 +96,10 @@ class RecurrentWrapper(Layer):
         self.input_spec = [InputSpec(ndim=3)]
 
         super(RecurrentWrapper, self).__init__(**kwargs)
+
+    @property
+    def number_of_inputs(self):
+        return len(self.external_input) + len(self.external_sequence_input)
 
     def get_output_shape_for(self, input_shape):
         head = tuple(input_shape[:2] if self.return_sequences else input_shape[:1])
@@ -115,7 +126,12 @@ class RecurrentWrapper(Layer):
         return self.step_model.get_config()
 
     def build(self, input_shape):
-        self.input_spec = [InputSpec(shape=input_shape)]
+        if self.number_of_inputs > 1:
+            self.input_spec = [InputSpec(shape=shape) for shape in input_shape]
+
+        else:
+            self.input_spec = [InputSpec(shape=input_shape)]
+        
         self.step_model.build(input_shape)
 
         self._trainable_weights.extend(self.step_model.trainable_weights)
@@ -135,19 +151,22 @@ class RecurrentWrapper(Layer):
         return result
 
     def call(self, x, mask=None):
-        def step(states, inputs):
-            full_input = self._ensure_list(inputs) + self._ensure_list(states)
-            new_states = self.step_model.call(full_input)
-            return self._ensure_list(new_states)
-
         assert self.return_sequences is True
 
         x = self._ensure_list(x)
         initial_states = self.get_initial_states(x)
 
-        x = self._swap_time_and_samples(x)
+        recurrent_inputs = x[:len(self.external_input)]
+        sequence_inputs = x[len(self.external_input):]
 
-        outputs = tf.scan(step, x, initial_states)
+        def step(states, inputs):
+            full_input = self._ensure_list(inputs) + sequence_inputs + self._ensure_list(states)
+            new_states = self.step_model.call(full_input)
+            return self._ensure_list(new_states)
+
+        recurrent_inputs  = self._swap_time_and_samples(recurrent_inputs )
+
+        outputs = tf.scan(step, recurrent_inputs , initial_states)
         outputs = [outputs[idx] for idx in self.final_output_map]
         outputs = self._swap_time_and_samples(outputs)
         return outputs
