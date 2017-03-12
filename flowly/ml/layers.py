@@ -63,13 +63,11 @@ class RecurrentWrapper(Layer):
         if stateful:
             raise RuntimeError('RecurrentWrapper does not support statefule transforms currently')
 
-        if not return_sequences:
-            raise RuntimeError('RecurrentWrapper does only support return_sequences=True')
-
-        self.bindings = bind
+        self.supports_masking = True
         self.stateful = stateful
         self.return_sequences = return_sequences
 
+        self.bindings = bind
         self.external_input = self._ensure_list(input)
         self.external_sequence_input = self._ensure_list(sequence_input)
         self.external_output = self._ensure_list(output)
@@ -85,10 +83,6 @@ class RecurrentWrapper(Layer):
             input=self.external_input + self.external_sequence_input + self.state_input,
             output=self.state_output,
         )
-
-        # TODO: fix this
-        self.supports_masking = True
-        self.input_spec = [InputSpec(ndim=3)]
 
         super(RecurrentWrapper, self).__init__(**kwargs)
 
@@ -137,17 +131,12 @@ class RecurrentWrapper(Layer):
         self.built = True
 
     def get_initial_states(self, x):
-        # See Recurrent.get_initial_states
-        result = []
-        result.extend(
+        return [
             self._get_initial_state(x, inp)
             for inp in self.state_input
-        )
-        return result
+        ]
 
     def call(self, x, mask=None):
-        assert self.return_sequences is True
-
         x = self._ensure_list(x)
         initial_states = self.get_initial_states(x)
 
@@ -163,8 +152,11 @@ class RecurrentWrapper(Layer):
 
         outputs = tf.scan(step, recurrent_inputs , initial_states)
         outputs = [outputs[idx] for idx in self.final_output_map]
-        outputs = self._swap_time_and_samples(outputs)
-        return outputs
+
+        if self.return_sequences:
+            return self._swap_time_and_samples(outputs)
+
+        return [output[-1] for output in outputs]
 
     @staticmethod
     def _get_initial_state(x, inp):
