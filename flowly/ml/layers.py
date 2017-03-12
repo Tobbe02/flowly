@@ -52,6 +52,11 @@ class RecurrentWrapper(Layer):
             input_shape=(None, 10),
             return_sequences=True,
         )
+
+    .. note::
+
+        this class is still highly in flux and does only work with tensoflow atm.
+
     """
     def __init__(self, input, output, bind, stateful=False, return_sequences=False, **kwargs):
         if stateful:
