@@ -7,11 +7,6 @@ from keras import backend as K
 import tensorflow as tf
 
 
-class IdentityLayer(Lambda):
-    def __init__(self, **kwargs):
-        super(IdentityLayer, self).__init__(lambda x: x, **kwargs)
-
-
 class GlobalAveragePooling1D(BaseGlobalAveragePooling1D):
     """Global average pooling with masking support.
     """
@@ -131,7 +126,7 @@ class RecurrentWrapper(Layer):
 
         else:
             self.input_spec = [InputSpec(shape=input_shape)]
-        
+
         self.step_model.build(input_shape)
 
         self._trainable_weights.extend(self.step_model.trainable_weights)
