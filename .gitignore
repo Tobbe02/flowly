@@ -8,4 +8,4 @@ __pycache__/
 /flowly.egg-info/
 /log
 .*.swp
-
+/.idea/
