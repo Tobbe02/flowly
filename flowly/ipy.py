@@ -298,6 +298,7 @@ js_source = '''
     }
 
     function updateTOC() {
+        var div = ensureContainer();
         var ul = $('<ul></ul>');
         var h1 = $('<h1>Table of contents</h1>');
 
