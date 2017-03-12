@@ -7,4 +7,5 @@ __pycache__/
 /tmp/
 /flowly.egg-info/
 /log
+.*.swp
 
