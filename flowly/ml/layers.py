@@ -1,5 +1,5 @@
 from keras.engine import InputSpec
-from keras.layers import GlobalAveragePooling1D as BaseGlobalAveragePooling1D, Lambda, Layer, Input
+from keras.layers import GlobalAveragePooling1D as BaseGlobalAveragePooling1D, Layer, Input
 from keras.engine.topology import Container
 
 from keras import backend as K
@@ -148,7 +148,7 @@ class RecurrentWrapper(Layer):
             new_states = self.step_model.call(full_input)
             return self._ensure_list(new_states)
 
-        recurrent_inputs  = self._swap_time_and_samples(recurrent_inputs )
+        recurrent_inputs = self._swap_time_and_samples(recurrent_inputs )
 
         outputs = tf.scan(step, recurrent_inputs , initial_states)
         outputs = [outputs[idx] for idx in self.final_output_map]
