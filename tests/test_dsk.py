@@ -40,10 +40,11 @@ from flowly.tz import (
 
 import pytest
 
-executors = [
-    lambda transform, obj, npartitions=None: transform(obj),
-    apply_to_local,
-]
+def execute_direct(transform, obj, npartitions=None):
+    return transform(obj)
+
+
+executors = [execute_direct, apply_to_local]
 
 
 def test_apply_error():
@@ -67,7 +68,7 @@ def test_unknown_func():
     ([True, True, True, True, True], True),
     ([False, False, False, False, False], False),
 ])
-@pytest.mark.parametrize('executor', executors)
+@pytest.mark.parametrize('executor', executors, ids=lambda func: func.__name__)
 def test_all(executor, input, output):
     assert executor(all, input, npartitions=3) is output
 
@@ -493,12 +494,23 @@ def test_flowly_tz_reduceby(executor):
     ])
 
 
-@pytest.mark.parametrize('executor', executors)
+@pytest.mark.parametrize('executor', executors, ids=lambda func: func.__name__)
 def test_flowly_tz_reduce(executor):
+    def aggregate(items):
+        sum, count = 0, 0
+
+        for s, c in items:
+            sum += s
+            count += c
+
+        return sum / max(1, count)
+
     # compute the mean
     transform = reduction(
         lambda l: (sum(l), len(l),),
-        lambda items: sum(s for s, _ in items) / max(1, sum(c for _, c in items))
+
+        # use function to traverse the iterable only once
+        aggregate,
     )
 
     assert executor(transform, [1, 2, 3, 4, 5, 6, 7, 8, 9], npartitions=3) == 5.0
