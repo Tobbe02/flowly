@@ -16,7 +16,7 @@ class GlobalAveragePooling1D(BaseGlobalAveragePooling1D):
 
     def call(self, x, mask=None):
         if mask is None:
-            return super(GlobalAveragePooling1D, self).call(x, mask)
+            return super(GlobalAveragePooling1D, self).call(x)
 
         mask = K.expand_dims(mask)
         mask = K.tile(mask, [1, 1, K.shape(x)[2]])
@@ -26,6 +26,87 @@ class GlobalAveragePooling1D(BaseGlobalAveragePooling1D):
         safe_mask_sum = K.maximum(safe_mask_sum, K.ones_like(safe_mask_sum))
 
         return K.sum(mask * x, axis=1) / safe_mask_sum
+
+
+class ReplaceWithMaskLayer(Layer):
+    def __init__(self, **kwargs):
+        super(ReplaceWithMaskLayer, self).__init__(**kwargs)
+
+    def compute_mask(self, inputs, mask):
+        return None
+
+    def call(self, inputs, mask=None):
+        if mask is None:
+            mask = K.zeros_like(inputs)
+            mask = K.sum(mask, axis=-1)
+            mask = 1 + mask
+
+        return K.expand_dims(mask)
+
+
+    def compute_output_shape(self, input_shape):
+        assert len(input_shape) == 3, "expected time-series data"
+        return (input_shape[0], input_shape[1], 1)
+
+
+class FixedLinspaceLayer(Layer):
+    """A layer that ignores its input and returns a linspace with fixed length.
+    """
+    def __init__(self, start=0.0, stop=1.0, num=50, **kwargs):
+        super(FixedLinspaceLayer, self).__init__(**kwargs)
+        self.num = num
+        self.start = float(start)
+        self.stop = float(stop)
+
+    def call(self, x):
+        r = K.cast(K.arange(self.num), K.floatx()) / float(self.num - 1)
+        r = self.start + (self.stop - self.start) * r
+        r = K.expand_dims(K.expand_dims(r), axis=0)
+        r = K.cast(r, dtype=K.floatx())
+        r = K.tile(r, (K.shape(x)[0], 1, 1))
+        return r
+
+    def compute_output_shape(self, input_shape):
+        assert len(input_shape) == 3, "expected time-series data"
+        return (input_shape[0], self.num, 1)
+
+
+class LinspaceLayer(Layer):
+    """Replace the input with a linearly spaced sequence.
+
+    Supports masking.
+    """
+    def __init__(self, start=0.0, stop=1.0, **kwargs):
+        super(LinspaceLayer, self).__init__(**kwargs)
+        self.supports_masking = True
+        self.start = start
+        self.stop = stop
+
+    def compute_mask(self, inputs, mask):
+        return mask
+
+    def call(self, inputs, mask=None):
+        if mask is None:
+            mask = K.zeros_like(inputs)
+            mask = K.sum(mask, axis=-1)
+            mask = 1 + mask
+
+        else:
+            mask = K.cast(mask, K.dtype(inputs))
+
+        safe_n1 = K.sum(mask, axis=1) - 1
+        safe_n1 = K.maximum(safe_n1, K.ones_like(safe_n1))
+        safe_n1 = K.expand_dims(safe_n1)
+
+        r = tf.cumsum(mask, axis=1) - 1
+        r = self.start + (self.stop - self.start) * r / safe_n1
+        r = mask * r
+        r = K.expand_dims(r)
+        return r
+
+    def compute_output_shape(self, input_shape):
+        assert len(input_shape) == 3, "expected time-series data"
+        return (input_shape[0], input_shape[1], 1)
 
 
 class RecurrentWrapper(Layer):
@@ -84,13 +165,14 @@ class RecurrentWrapper(Layer):
             output=self.state_output,
         )
 
+        self.losses = []
         super(RecurrentWrapper, self).__init__(**kwargs)
 
     @property
     def number_of_inputs(self):
         return len(self.external_input) + len(self.external_sequence_input)
 
-    def get_output_shape_for(self, input_shape):
+    def compute_output_shape(self, input_shape):
         head = tuple(input_shape[:2] if self.return_sequences else input_shape[:1])
 
         def _shape(output):
@@ -154,9 +236,9 @@ class RecurrentWrapper(Layer):
         outputs = [outputs[idx] for idx in self.final_output_map]
 
         if self.return_sequences:
-            return self._swap_time_and_samples(outputs)
+            return self._possibly_scalar(self._swap_time_and_samples(outputs))
 
-        return [output[-1] for output in outputs]
+        return self._possibly_scalar([output[-1] for output in outputs])
 
     @staticmethod
     def _get_initial_state(x, inp):
@@ -181,6 +263,10 @@ class RecurrentWrapper(Layer):
     @staticmethod
     def _ensure_list(obj):
         return list(obj) if isinstance(obj, (list, tuple)) else [obj]
+
+    @staticmethod
+    def _possibly_scalar(obj):
+        return obj[0] if len(obj) == 1 else obj
 
 
 def build_recurrence_wrapper(external_input, external_output, bind, build_input):

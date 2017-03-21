@@ -13,7 +13,14 @@ from keras.layers import (
 )
 from keras.models import Model, Sequential
 
-from flowly.ml.layers import build_recurrence_wrapper, GlobalAveragePooling1D, RecurrentWrapper
+from flowly.ml.layers import (
+    build_recurrence_wrapper,
+    FixedLinspaceLayer,
+    GlobalAveragePooling1D,
+    LinspaceLayer,
+    RecurrentWrapper,
+    ReplaceWithMaskLayer,
+)
 
 
 def test_recurrent_wrapper__simple_rnn__sequences():
@@ -253,4 +260,113 @@ def test_global_average_pooling_1d__with_masking():
 
     # use reduced tolerance due to float32
     np.testing.assert_allclose(result, np.mean(x_input[:, :-15, :], axis=1), rtol=1e-3)
+
+
+def test_fixed_linspace_layer__example():
+    actual = apply_fixed_linspace(num=10, batch_input_shape=(5, 20, 3))
+    expected = tiled_linspace(batch_input_shape=(5, 10, 1))
+    np.testing.assert_allclose(actual, expected, rtol=1e-4)
+
+
+def test_fixed_linspace_layer__other_range():
+    actual = apply_fixed_linspace(num=10, start=2.0, stop=-1.0, batch_input_shape=(5, 20, 3))
+    expected = tiled_linspace(start=2.0, stop=-1.0, batch_input_shape=(5, 10, 1))
+    np.testing.assert_allclose(actual, expected, rtol=1e-4)
+
+
+def test_replace_with_mask_layer__no_mask():
+    m = Sequential([
+        ReplaceWithMaskLayer(input_shape=(None, 10)),
+    ])
+    actual = m.predict(np.random.uniform(size=(30, 20, 10)))
+    expected = np.ones((30, 20, 1))
+    np.testing.assert_allclose(actual, expected)
+
+
+def test_replace_with_mask_layer__with_mask():
+    input = np.zeros((5, 20, 10))
+    input[0, :10, :] = 1
+    input[1, :20, :] = 1
+    input[2, :15, :] = 1
+
+    m = Sequential([
+        Masking(input_shape=(None, 10)),
+        ReplaceWithMaskLayer(),
+    ])
+    actual = m.predict(input)
+    expected = input[:, :, :1]
+    np.testing.assert_allclose(actual, expected)
+
+
+def test_linspace_layer__no_mask():
+    m = Sequential([
+        LinspaceLayer(input_shape=(None, 10)),
+    ])
+    actual = m.predict(np.random.uniform(size=(30, 20, 10)))
+    expected = tiled_linspace(batch_input_shape=(30, 20, 1))
+
+    np.testing.assert_allclose(actual, expected)
+
+
+def test_linspace_layer__with_mask():
+    input = np.zeros((5, 20, 10))
+    input[0, :10, :] = 1
+    input[1, :20, :] = 1
+    input[2, :15, :] = 1
+
+    expected = np.zeros((5, 20, 1), dtype=float)
+    expected[0, :10, 0] = np.linspace(0.0, 1.0, 10)
+    expected[1, :20, 0] = np.linspace(0.0, 1.0, 20)
+    expected[2, :15, 0] = np.linspace(0.0, 1.0, 15)
+
+    m = Sequential([
+        Masking(input_shape=(None, 10)),
+        LinspaceLayer(),
+    ])
+    actual = m.predict(input)
+
+    np.testing.assert_allclose(actual, expected)
+
+
+def test_linspace_layer__with_mask_offset():
+    input = np.zeros((5, 20, 10))
+    input[0, 5:10, :] = 1
+    input[1, 10:20, :] = 1
+    input[2, 7:15, :] = 1
+
+    expected = np.zeros((5, 20, 1), dtype=float)
+    expected[0, 5:10, 0] = np.linspace(0.0, 1.0, 5)
+    expected[1, 10:20, 0] = np.linspace(0.0, 1.0, 10)
+    expected[2, 7:15, 0] = np.linspace(0.0, 1.0, 8)
+
+    m = Sequential([
+        Masking(input_shape=(None, 10)),
+        LinspaceLayer(),
+    ])
+    actual = m.predict(input)
+
+    np.testing.assert_allclose(actual, expected)
+
+
+def tiled_linspace(batch_input_shape, start=0.0, stop=1.0):
+    n_samples, num, n_features = batch_input_shape
+    return np.tile(
+        np.reshape(
+            np.linspace(start, stop, num),
+            (1, -1, 1),
+        ),
+        (n_samples, 1, n_features),
+    )
+
+
+def apply_fixed_linspace(**kwargs):
+    batch_input_shape = kwargs.pop('batch_input_shape')
+
+    m = Sequential([
+        FixedLinspaceLayer(
+            batch_input_shape=(None, None) + (batch_input_shape[-1],),
+            **kwargs
+        ),
+    ])
+    return m.predict(np.random.uniform(size=batch_input_shape))
 
