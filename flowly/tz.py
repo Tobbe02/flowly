@@ -8,7 +8,6 @@ try:
 except ImportError:
     import builtins
 
-import contextlib
 import functools as ft
 import inspect
 import itertools as it
@@ -34,7 +33,6 @@ __all__ = [
     'apply_map_concat',
     'build_dict',
     'chained',
-    'contextlib',
     'division',
     'frequencies',
     'groupby',
@@ -699,7 +697,6 @@ def raise_(exc_class, *args, **kwargs):
     raise exc_class(*args, **kwargs)
 
 
-@contextlib.contextmanager
 def timed(tag=None, level=logging.INFO):
     """Time a codeblock and log the result.
 
@@ -712,17 +709,27 @@ def timed(tag=None, level=logging.INFO):
         an object used to identify the timed code block. It is printed with
         the time taken.
     """
-    if tag is None:
-        msg = 'took %s s'
+    return _TimedContext(
+        message=('took %s s' if tag is None else '{} took %s s'.format(tag)),
+        logger=_get_caller_logger(),
+        level=level,
+    )
 
-    else:
-        msg = '{} took %s s'.format(tag)
 
-    logger = _get_caller_logger()
-    start = time.time()
-    yield
-    end = time.time()
-    logger.log(level, msg, end - start)
+# use a custom contextmanager to control stack level for _get_caller_logger
+class _TimedContext(object):
+    def __init__(self, logger, message, level):
+        self.logger = logger
+        self.message = message
+        self.level = level
+
+    def __enter__(self):
+        self.start = time.time()
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        end = time.time()
+        self.logger.log(self.level, self.message, end - self.start)
+
 
 
 def _get_caller_logger(depth=2):
