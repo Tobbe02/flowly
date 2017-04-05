@@ -700,7 +700,7 @@ def raise_(exc_class, *args, **kwargs):
 
 
 @contextlib.contextmanager
-def timed(tag=None):
+def timed(tag=None, level=logging.INFO):
     """Time a codeblock and log the result.
 
     Usage::
@@ -722,7 +722,7 @@ def timed(tag=None):
     start = time.time()
     yield
     end = time.time()
-    logger.info(msg, end - start)
+    logger.log(level, msg, end - start)
 
 
 def _get_caller_logger(depth=2):

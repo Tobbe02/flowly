@@ -1,5 +1,6 @@
 from __future__ import print_function, division, absolute_import
 
+import logging
 import operator as op
 
 import pytest
@@ -274,6 +275,11 @@ def test_timed():
 
 def test_timed_with_tag():
     with timed(tag='operation'):
+        pass
+
+
+def test_timed_with_tag_and_level():
+    with timed(tag='operation', level=logging.DEBUG):
         pass
 
 
