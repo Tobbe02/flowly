@@ -273,6 +273,12 @@ def test_timed():
         pass
 
 
+def test_timed_raises():
+    with pytest.raises(ValueError):
+        with timed():
+            raise ValueError()
+
+
 def test_timed_with_tag():
     with timed(tag='operation'):
         pass
