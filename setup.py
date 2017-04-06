@@ -1,10 +1,10 @@
-#!/usr/bin/env python
-
 from setuptools import setup
+
 
 def _read(fname):
     with open(fname) as fobj:
         return fobj.read()
+
 
 setup(
     name='flowly',
@@ -15,7 +15,7 @@ setup(
     author_email='mail@cprohm.de',
     license='MIT',
     packages=["flowly"],
-    tests_require=['pytest','dask'],
+    tests_require=['pytest', 'dask', 'pytest-pep8'],
     classifiers=[
         'Development Status :: 4 - Beta',
 

@@ -250,8 +250,8 @@ def test_global_average_pooling_1d__no_masking():
 
 def test_global_average_pooling_1d__with_masking():
     model = Sequential([
-            Masking(input_shape=(None, 20)),
-            GlobalAveragePooling1D()
+        Masking(input_shape=(None, 20)),
+        GlobalAveragePooling1D()
     ])
 
     x_input = np.random.uniform(size=(40, 30, 20))

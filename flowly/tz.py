@@ -731,7 +731,6 @@ class _TimedContext(object):
         self.logger.log(self.level, self.message, end - self.start)
 
 
-
 def _get_caller_logger(depth=2):
     stack = inspect.stack()
 

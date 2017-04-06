@@ -40,6 +40,7 @@ from flowly.tz import (
 
 import pytest
 
+
 def execute_direct(transform, obj, npartitions=None):
     return transform(obj)
 

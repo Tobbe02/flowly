@@ -5,6 +5,7 @@ import shlex
 
 from flowly.ipy import notify
 
+
 @magics_class
 class FlowlyMagics(Magics):
     @cell_magic
@@ -18,5 +19,4 @@ class FlowlyMagics(Magics):
         notify(args.message, tag=args.tag)
 
 
-get_ipython().register_magics(FlowlyMagics)
-
+get_ipython().register_magics(FlowlyMagics)  # noqa

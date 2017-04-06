@@ -125,7 +125,7 @@ class Dispatch(object):
                 yield match
 
     def _lookup_execute_conditional_bindings(self, t):
-        root, _1, _2,  = t.__module__.partition('.')
+        root, _1, _2 = t.__module__.partition('.')
 
         try:
             func = self.conditional_bindings.pop(root)

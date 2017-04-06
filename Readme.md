@@ -8,3 +8,6 @@ complex transformation and analysis pipelines.
 
 For more information, see the [docs](https://py-flowly.readthedocs.io/en/latest/)
 
+To run tests, execute:
+
+    python -m pytest --pep8
