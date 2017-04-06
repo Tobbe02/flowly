@@ -316,6 +316,26 @@ def test_optional__example():
     repr(optional(None))
 
 
+def test_empty_optional():
+    assert +optional().or_else(7) == 7
+
+
+def test_optional_identity():
+    assert +optional(optional(3)) == 3
+
+
+def test_optional_all():
+    assert +optional.all(1, 2, 3).or_else('nothing') == [1, 2, 3]
+    assert +optional.all(None, 2, 3).or_else('nothing') == 'nothing'
+
+
+def test_optional_any():
+    assert +optional.any(1, 2, 3).or_else('nothing') == 1
+    assert +optional.any(None, 2, 3).or_else('nothing') == 2
+    assert +optional.any(None, None, 3).or_else('nothing') == 3
+    assert +optional.any(None, None, None).or_else('nothing') == 'nothing'
+
+
 def test_optional__get_raises():
     with pytest.raises(ValueError):
         optional(None).get()
@@ -324,6 +344,14 @@ def test_optional__get_raises():
 def test_try_call__example():
     assert try_call(raise_, ValueError).recover(lambda _: 42).get() == 42
     assert try_call(lambda: 13).recover(lambda _: 42).get() == 13
+
+    repr(try_call(raise_, ValueError))
+    repr(try_call(lambda: 13))
+
+
+def test_try_call__identity():
+    assert try_call.of(try_call(raise_, ValueError)).recover(lambda _: 42).get() == 42
+    assert try_call.of(try_call(lambda: 13)).recover(lambda _: 42).get() == 13
 
 
 def test_try_call__then():
@@ -334,6 +362,30 @@ def test_try_call__then():
     )
 
     assert +try_call(lambda: 13).then(lambda v: v + 8) == 21
+
+
+def test_try_call__all():
+    f = try_call(raise_, ValueError)
+    a = try_call(lambda: 1)
+    b = try_call(lambda: 2)
+    c = try_call(lambda: 3)
+
+    assert +try_call.all(a, b, c).recover(lambda _: None) == [1, 2, 3]
+    assert +try_call.all(f, b, c).recover(lambda _: None) is None
+    assert +try_call.all(f, f, c).recover(lambda _: None) is None
+    assert +try_call.all(f, f, f).recover(lambda _: None) is None
+
+
+def test_try_call__any():
+    f = try_call(raise_, ValueError)
+    a = try_call(lambda: 1)
+    b = try_call(lambda: 2)
+    c = try_call(lambda: 3)
+
+    assert +try_call.any(a, b, c).recover(lambda _: None) == 1
+    assert +try_call.any(f, b, c).recover(lambda _: None) == 2
+    assert +try_call.any(f, f, c).recover(lambda _: None) == 3
+    assert +try_call.any(f, f, f).recover(lambda _: None) is None
 
 
 def test_try_call__get_for_failure_raises():

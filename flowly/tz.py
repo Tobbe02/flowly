@@ -659,7 +659,7 @@ def sliced(iterable, *slice_args):
     return list(it.islice(iterable, *slice_args))
 
 
-def optional(val):
+def optional(val=None):
     """Wrap any value with the optional moand.
 
     Usage::
@@ -668,9 +668,33 @@ def optional(val):
 
         val = +optional(val).or_else_call(expensive_function, arg1, arg2)
     """
+    if isinstance(val, _Maybe):
+        return val
+
     return Just(val) if val is not None else Nothing()
 
 
+def _optional_all(*optionals):
+    optionals = [optional(v) for v in optionals]
+
+    return optional(
+        [+o for o in optionals]
+        if all(isinstance(o, Just) for o in optionals) else None
+    )
+
+
+def _optional_any(*optionals):
+    for o in optionals:
+        o = optional(o)
+        if isinstance(o, Just):
+            return o
+
+    else:
+        return optional()
+
+
+optional.all = _optional_all
+optional.any = _optional_any
 not_none = optional
 
 
@@ -689,6 +713,36 @@ def try_call(func, *args, **kwargs):
 
     else:
         return Success(result)
+
+
+def _try_call_of(value):
+    return Success(value) if not isinstance(value, _Try) else value
+
+
+def _try_call_all(*trys):
+    trys = [try_call.of(t) for t in trys]
+
+    if all(isinstance(t, Success) for t in trys):
+        return Success([t.value for t in trys])
+
+    else:
+        return Failure(ValueError('failed trys'))
+
+
+def _try_call_any(*trys):
+    trys = [try_call.of(t) for t in trys]
+
+    for t in trys:
+        if isinstance(t, Success):
+            return t
+
+    else:
+        return Failure(ValueError('no success'))
+
+
+try_call.of = _try_call_of
+try_call.all = _try_call_all
+try_call.any = _try_call_any
 
 
 def raise_(exc_class, *args, **kwargs):
@@ -818,6 +872,9 @@ class Success(_Try):
     def recover(self, func, *args, **kwargs):
         return self
 
+    def __repr__(self):
+        return 'Success({!r})'.format(self.value)
+
 
 class Failure(_Try):
     def __init__(self, exception):
@@ -831,3 +888,6 @@ class Failure(_Try):
 
     def recover(self, func, *args, **kwargs):
         return try_call(func, self.exception, *args, **kwargs)
+
+    def __repr__(self):
+        return 'Failure({!r})'.format(self.exception)
