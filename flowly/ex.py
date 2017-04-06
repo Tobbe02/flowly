@@ -11,9 +11,11 @@ from ipywidgets.widgets import DOMWidget
 from IPython.display import display_javascript, Javascript
 from traitlets import Unicode, List, Dict, Bool
 
+from .tz import optional
+
 
 def get(f):
-    return f.result() if f.done() else None
+    return optional(f.result() if f.done() else None)
 
 
 def submit(*args, **kwargs):
@@ -112,8 +114,6 @@ def submit_generator(client, func, *args, **kwargs):
 
 
 class DashboardExecutor(object):
-    _js_init = False
-
     def __init__(self, executor):
         self.executor = executor
         self.ids = iter('job{}'.format(id) for id in it.count())
@@ -124,8 +124,9 @@ class DashboardExecutor(object):
 
     @property
     def dashboard(self):
+        self.init_js()
+
         if self._dashboard is not None:
-            self.init_js()
             return self._dashboard
 
         self._dashboard = Dashboard()
@@ -158,11 +159,7 @@ class DashboardExecutor(object):
 
     @classmethod
     def init_js(cls):
-        if cls._js_init:
-            return
-
         display_javascript(Javascript(_dashboard_javascript))
-        cls._js_init = True
 
 
 class Dashboard(DOMWidget):

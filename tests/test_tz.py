@@ -302,8 +302,18 @@ def test_optional__example():
     assert +optional(3).transform(lambda a, b: a * b, b=2).get() == 6
     assert +optional(None).transform(lambda a, b: a + b, b=2).or_else(42).get() == 42
 
-    assert +optional(3).or_else_call(lambda: 42).get() == 3
-    assert +optional(None).or_else_call(lambda: 42).get() == 42
+    assert +optional(3).or_else_call(lambda: 42) == 3
+    assert +optional(None).or_else_call(lambda: 42) == 42
+
+    assert +optional(3).pipe(lambda x: [x]) == [3]
+    assert +optional(None).pipe(lambda x: [x]) == [None]
+
+    assert +optional(3).pipe() == 3
+    assert +optional(3).pipe().or_else(6) == 3
+    assert +optional(None).pipe().or_else(6) == 6
+
+    repr(optional(3))
+    repr(optional(None))
 
 
 def test_optional__get_raises():

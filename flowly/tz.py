@@ -762,6 +762,9 @@ class Nothing(_Maybe):
     def transform(self, func, *args, **kwargs):
         return self
 
+    def pipe(self, func=lambda x: x, *args, **kwargs):
+        return optional(func(None, *args, **kwargs))
+
     def get(self):
         raise ValueError()
 
@@ -771,6 +774,9 @@ class Nothing(_Maybe):
     def or_else_call(self, func, *args, **kwargs):
         return optional(func(*args, **kwargs))
 
+    def __repr__(self):
+        return 'Nothing()'
+
 
 class Just(_Maybe):
     def __init__(self, value):
@@ -778,6 +784,9 @@ class Just(_Maybe):
 
     def transform(self, func, *args, **kwargs):
         return optional(func(self.value, *args, **kwargs))
+
+    def pipe(self, func=lambda x: x, *args, **kwargs):
+        return optional(func(self.value))
 
     def get(self):
         return self.value
@@ -787,6 +796,9 @@ class Just(_Maybe):
 
     def or_else_call(self, func, *args, **kwargs):
         return self
+
+    def __repr__(self):
+        return 'Just({!r})'.format(self.value)
 
 
 class _Try(_Gettable):
