@@ -11,11 +11,11 @@ from ipywidgets.widgets import DOMWidget
 from IPython.display import display_javascript, Javascript
 from traitlets import Unicode, List, Dict, Bool
 
-from .tz import optional
+from .tz import try_call, raise_
 
 
 def get(f):
-    return optional(f.result() if f.done() else None)
+    return try_call(f.result) if f.done() else try_call(raise_, ValueError('not done'))
 
 
 def submit(*args, **kwargs):
