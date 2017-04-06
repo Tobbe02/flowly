@@ -1,5 +1,6 @@
 import numpy as np
 import pytest
+import tensorflow as tf
 
 from keras.layers import (
     merge,
@@ -8,7 +9,6 @@ from keras.layers import (
     Dense,
     Input,
     InputLayer,
-    Lambda,
     Masking,
 )
 from keras.models import Model, Sequential
@@ -20,6 +20,7 @@ from flowly.ml.layers import (
     LinspaceLayer,
     RecurrentWrapper,
     ReplaceWithMaskLayer,
+    SoftmaxAttentionLayer,
 )
 
 
@@ -370,3 +371,84 @@ def apply_fixed_linspace(**kwargs):
     ])
     return m.predict(np.random.uniform(size=batch_input_shape))
 
+
+def test_attention_no_masking():
+    """Test without masking
+    """
+    s = np.random.uniform(size=(5, 4, 3)).astype(np.float32)
+    c = np.random.uniform(size=(5, 3)).astype(np.float32)
+    mask = np.ones((5, 4), dtype=np.bool)
+
+    expected = _attention_expected(s, c, mask)
+    actual = _attention_apply(s, c, mask)
+
+    np.testing.assert_allclose(expected, actual, rtol=1e-3)
+
+
+def test_attention_masking():
+    """Test with masking (upto a fully masked array).
+    """
+    s = np.random.uniform(size=(5, 4, 3)).astype(np.float32)
+    c = np.random.uniform(size=(5, 3)).astype(np.float32)
+
+    mask = np.ones((5, 4), dtype=np.bool)
+    mask[0, 0:] = 0
+    mask[1, 1:] = 0
+    mask[2, 2:] = 0
+    mask[3, 3:] = 0
+    mask[4, 4:] = 0
+
+    expected = _attention_expected(s, c, mask)
+    actual = _attention_apply(s, c, mask)
+
+    np.testing.assert_allclose(expected, actual, rtol=1e-3)
+
+
+def test_attention__invalid_masking():
+    """test, that the mask is really handled correctly in refernce
+    """
+    s = np.random.uniform(size=(5, 4, 3)).astype(np.float32)
+    c = np.random.uniform(size=(5, 3)).astype(np.float32)
+
+    # note the slice is reversed
+    mask = np.ones((5, 4), dtype=np.bool)
+    mask[0, :0] = 0
+    mask[1, :1] = 0
+    mask[2, :2] = 0
+    mask[3, :3] = 0
+    mask[4, :4] = 0
+
+    expected = _attention_expected(s, c, mask)
+    actual = _attention_apply(s, c, mask)
+
+    with pytest.raises(AssertionError):
+        np.testing.assert_allclose(expected, actual, rtol=1e-3)
+
+
+def _attention_apply(s, c, mask):
+    with tf.Session() as sess:
+        return (
+            SoftmaxAttentionLayer()
+            .call(
+                [tf.constant(s), tf.constant(c)],
+                mask=(tf.constant(mask), None),
+            )
+            .eval(session=sess)
+        )
+
+
+def _attention_expected(s, c, mask):
+    N = s.shape[0]
+
+    result = np.empty_like(c)
+
+    for i in range(N):
+        d = int(mask[i, :].sum())
+
+        a = np.sum(s[i, :d, :] * c[i, None, :], axis=1)
+        a = np.exp(a)
+        a = a / np.sum(a, axis=0)[None]
+
+        result[i, :] = np.sum(s[i, :d, :] * a[:, None], axis=0)
+
+    return result

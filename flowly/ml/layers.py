@@ -43,7 +43,6 @@ class ReplaceWithMaskLayer(Layer):
 
         return K.expand_dims(mask)
 
-
     def compute_output_shape(self, input_shape):
         assert len(input_shape) == 3, "expected time-series data"
         return (input_shape[0], input_shape[1], 1)
@@ -107,6 +106,51 @@ class LinspaceLayer(Layer):
     def compute_output_shape(self, input_shape):
         assert len(input_shape) == 3, "expected time-series data"
         return (input_shape[0], input_shape[1], 1)
+
+
+class SoftmaxAttentionLayer(Layer):
+    """Compute softmax attenion given a sequence and a context vector.
+
+    Expect inputs with shapes:
+
+    - sequence: ``(n_batch, n_time, n_features)``
+    - context: ``(n_batch, n_features)``
+
+    The output has then a shape ``(n_batch, n_features)``.
+    """
+    def __init__(self, epsilon=1e-7, **kwargs):
+        super(SoftmaxAttentionLayer, self).__init__(**kwargs)
+        self.supports_masking = True
+        self.epsilon = epsilon
+
+    def compute_mask(self, inputs, mask=None):
+        return None
+
+    def compute_output_shape(self, input_shapes):
+        seq_shape, _ = input_shapes
+        return (seq_shape[0], seq_shape[2])
+
+    def call(self, inputs, mask=None):
+        seq, ctx = inputs
+
+        if mask is None:
+            mask = tf.ones(tf.shape(seq)[:2])
+
+        else:
+            mask, _ = mask
+
+        # form the dot product between context vector and each item
+        c = tf.expand_dims(ctx, axis=1)
+        a = tf.reduce_sum(c * seq, axis=-1)
+
+        # build the attention weights
+        a = tf.cast(mask, K.floatx()) * tf.exp(a)
+        a = a / tf.maximum(self.epsilon, tf.reduce_max(a, axis=1, keep_dims=True))
+        a = a / tf.maximum(self.epsilon, tf.reduce_sum(a, axis=1, keep_dims=True))
+        a = tf.expand_dims(a, axis=2)
+
+        # compute the weighted sum
+        return tf.reduce_sum(seq * a, axis=1)
 
 
 class RecurrentWrapper(Layer):
@@ -230,9 +274,9 @@ class RecurrentWrapper(Layer):
             new_states = self.step_model.call(full_input)
             return self._ensure_list(new_states)
 
-        recurrent_inputs = self._swap_time_and_samples(recurrent_inputs )
+        recurrent_inputs = self._swap_time_and_samples(recurrent_inputs)
 
-        outputs = tf.scan(step, recurrent_inputs , initial_states)
+        outputs = tf.scan(step, recurrent_inputs, initial_states)
         outputs = [outputs[idx] for idx in self.final_output_map]
 
         if self.return_sequences:
