@@ -7,15 +7,24 @@ import itertools as it
 import threading
 import uuid
 
-from ipywidgets.widgets import DOMWidget
-from IPython.display import display_javascript, Javascript
-from traitlets import Unicode, List, Dict, Bool
+try:
+    from ipywidgets.widgets import DOMWidget
+    from IPython.display import display_javascript, Javascript
+    from traitlets import Unicode, List, Dict, Bool
+    _ipy_available = True
+
+except ImportError:
+    _ipy_available = False
 
 from .tz import try_call, raise_
 
 
 def get(f):
-    return try_call(f.result) if f.done() else try_call(raise_, ValueError('not done'))
+    return try_call(f.result) if f.done() else try_call(raise_, NotDone)
+
+
+class NotDone(Exception):
+    pass
 
 
 def submit(*args, **kwargs):
@@ -162,21 +171,22 @@ class DashboardExecutor(object):
         display_javascript(Javascript(_dashboard_javascript))
 
 
-class Dashboard(DOMWidget):
-    _view_name = Unicode('FutureList').tag(sync=True)
-    _view_module = Unicode('flowly').tag(sync=True)
+if _ipy_available:
+    class Dashboard(DOMWidget):
+        _view_name = Unicode('FutureList').tag(sync=True)
+        _view_module = Unicode('flowly').tag(sync=True)
 
-    futures = List(Dict()).tag(sync=True)
-    notify = Bool().tag(sync=True)
+        futures = List(Dict()).tag(sync=True)
+        notify = Bool().tag(sync=True)
 
-    def add(self, tag, state='running'):
-        self.futures = list(self.futures) + [{'tag': tag, 'state': state}]
+        def add(self, tag, state='running'):
+            self.futures = list(self.futures) + [{'tag': tag, 'state': state}]
 
-    def update(self, tag, **items):
-        self.futures = [
-            dict(job, **items) if job['tag'] == tag else job
-            for job in self.futures
-        ]
+        def update(self, tag, **items):
+            self.futures = [
+                dict(job, **items) if job['tag'] == tag else job
+                for job in self.futures
+            ]
 
 
 class _SubmittedGeneratorIterator(object):
