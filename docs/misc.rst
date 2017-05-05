@@ -28,6 +28,7 @@ Uncategorized:
 
 - :func:`flowly.tz.raise_`
 - :func:`flowly.tz.timed`
+- :func:`flowly.tz.reload`
 
 Reference
 ---------
@@ -51,6 +52,8 @@ Reference
 .. autofunction:: flowly.tz.optional
 
 .. autofunction:: flowly.tz.raise_
+
+.. autofunction:: flowly.tz.reload
 
 .. function:: flowly.tz.show(obj)
 

@@ -8,6 +8,14 @@ try:
 except ImportError:
     import builtins
 
+try:
+    from importlib import import_module, reload as _reload
+
+except ImportError:
+    def import_module(m):
+        raise RuntimeError('importing module by name not supported')
+
+
 import functools as ft
 import inspect
 import itertools as it
@@ -901,3 +909,20 @@ class Failure(_Try):
 
     def __repr__(self):
         return 'Failure({!r})'.format(self.exception)
+
+
+def reload(m):
+    """Helper to simplify reloading module by name or as a module.
+
+    Usage::
+
+        import mod
+        reload(mod)
+
+        reload('mod')
+
+    """
+    if isinstance(m, str):
+        m = import_module(m)
+
+    return _reload(m)
