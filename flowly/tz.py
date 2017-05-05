@@ -655,7 +655,42 @@ class kv_reductionby(object):
         ]
 
 
-collect = kv_reductionby(None, list)
+collect = kv_reductionby(list)
+
+
+def get_all_optional_items(*keys):
+    """Similar to :func:`get_all_items`, but return ``None`` for ``None`` keys.
+    """
+    def impl(iterable):
+        valid_keys = [k for k in keys if k is not None]
+        valid_results = get_all_items(*valid_keys)(iterable)
+        valid_results = dict(zip(valid_keys, valid_results))
+
+        return tuple(
+            (valid_results[k] if k is not None else None)
+            for k in keys
+        )
+
+    return impl
+
+
+def get_all_items(*keys):
+    """Similar to ``map(op.itemgetter(...))`` with support for multiple keys.
+
+    :returns:
+        a tuple of lists
+    
+    """
+    def impl(iterable):
+        results = tuple([] for _ in keys)
+
+        for obj in iterable:
+            for (r, k) in zip(results, keys):
+                r.append(obj[k])
+
+        return results
+
+    return impl
 
 
 def tupled(func):

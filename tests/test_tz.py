@@ -14,6 +14,8 @@ from flowly.tz import (
     chained,
     frequencies,
     groupby,
+    get_all_items,
+    get_all_optional_items,
     itemsetter,
     kv_keymap,
     kv_reduceby,
@@ -411,3 +413,28 @@ def test_show():
 
 def test_show_format():
     assert show % '-- %d -- ' | 13 == 13
+
+
+def test_get_all_items():
+    data = [
+        dict(a=1, b=2, c=3),
+        dict(a=4, b=5, c=6),
+    ]
+
+    a, b = get_all_items('a', 'b')(data)
+
+    assert a == [1, 4]
+    assert b == [2, 5]
+
+
+def test_get_all_optional_items():
+    data = [
+        dict(a=1, b=2, c=3),
+        dict(a=4, b=5, c=6),
+    ]
+
+    a, n, b = get_all_optional_items('a', None, 'b')(data)
+
+    assert a == [1, 4]
+    assert b == [2, 5]
+    assert n is None
