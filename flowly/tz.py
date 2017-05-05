@@ -612,13 +612,23 @@ class kv_reductionby(object):
     """Reduction for key value pairs, only values are seend by the reducer.
 
     In contrast to :func:`flowly.tz.reductionby`, the data should be a list of
-    key-value pairs.
-    The groups are formed by the key part of each item and the reduction is only
-    applied to the values.
-    This function is designed to map from a list of key-value pairs to another
-    list of key-value pairs.
+    key-value pairs. The groups are formed by the key part of each item and the
+    reduction is only applied to the values. This function is designed to map
+    from a list of key-value pairs to another list of key-value pairs.
+
+    Usage::
+
+        >>> pipe(
+        ...     [(0, 1), (0, 2), (1, 4)],
+        ...     kv_reductionby(sum)
+        ... )
+        [(0, 3), (1, 4)]
+
     """
-    def __init__(self, perpartition, aggregate, split_every=None):
+    def __init__(self, perpartition, aggregate=None, split_every=None):
+        if aggregate is None:
+            perpartition, aggregate = aggregate, perpartition
+
         self.perpartition = perpartition
         self.aggregate = aggregate
         self.split_every = split_every
