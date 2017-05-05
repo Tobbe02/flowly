@@ -679,7 +679,7 @@ def get_all_items(*keys):
 
     :returns:
         a tuple of lists
-    
+
     """
     def impl(iterable):
         results = tuple([] for _ in keys)
