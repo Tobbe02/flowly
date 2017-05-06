@@ -949,6 +949,9 @@ class Failure(_Try):
 def reload(m):
     """Helper to simplify reloading module by name or as a module.
 
+    ``m ``can either be a module object, a module name or a list of modules to
+    reload (either string or module objects).
+
     Usage::
 
         import mod
@@ -957,7 +960,16 @@ def reload(m):
         reload('mod')
 
     """
-    if isinstance(m, str):
-        m = import_module(m)
+    def _impl(m):
+        if isinstance(m, str):
+            m = import_module(m)
 
-    return _reload(m)
+        return _reload(m)
+
+    if isinstance(m, (list, tuple)):
+        for i in m:
+            _impl(i)
+
+    else:
+        return _impl(m)
+
