@@ -160,6 +160,7 @@ part of the items.
 
 To simplify the process flowly offers the following helper functions:
 
+* :func:`flowly.tz.kv_aggregateby`
 * :func:`flowly.tz.kv_keymap`
 * :func:`flowly.tz.kv_valmap`
 * :func:`flowly.tz.kv_reduceby`
@@ -200,6 +201,8 @@ Execution
 Buildings Blocks
 ~~~~~~~~~~~~~~~~
 
+.. autofunction:: flowly.tz.aggregate
+
 .. autofunction:: flowly.tz.apply_concat
 
 .. autofunction:: flowly.tz.apply_map_concat
@@ -218,6 +221,8 @@ Buildings Blocks
 .. autofunction:: flowly.tz.groupby
 
 .. autofunction:: flowly.tz.itemsetter
+
+.. autofunction:: flowly.tz.kv_aggregateby
 
 .. autofunction:: flowly.tz.kv_keymap
 

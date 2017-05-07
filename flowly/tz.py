@@ -16,6 +16,7 @@ except ImportError:
         raise RuntimeError('importing module by name not supported')
 
 
+import collections
 import functools as ft
 import inspect
 import itertools as it
@@ -445,6 +446,56 @@ class reduction(object):
             return self.aggregate([self.perpartition(obj)])
 
 
+# TODO: support reductions as funcs in spec to properly parallelize
+class aggregate(reduction):
+    """Execute pandas style aggregations on a iterable
+
+    .. note::
+
+        The iterable will be exhausted and a dictionary returned. Also in its
+        current form aggregate does not parallelize well, since it does not
+        support separate per-partition and final aggregation.
+
+    Example::
+
+        >>> pipe(
+        ...     [{'value': 1}, {'value': 2}, {'value': 3}],
+        ...     aggregate({'value': [sum, np.mean]}),
+        ... )
+        {('value', 'mean'): 2.0, ('value', 'sum'): 6}
+
+    """
+    def __init__(self, spec, split_every=None):
+        self.spec = self._normalize_spec(spec)
+        self.split_every = split_every
+
+    @classmethod
+    def _normalize_spec(cls, spec):
+        if not isinstance(spec, collections.Mapping):
+            raise ValueError('spec must be a mapping')
+
+        return {k: cls._normalize_aggregators(aggs) for k, aggs in spec.items()}
+
+    @staticmethod
+    def _normalize_aggregators(aggs):
+        return aggs if isinstance(aggs, collections.Sequence) else [aggs]
+
+    @property
+    def perpartition(self):
+        return None
+
+    def aggregate(self, data):
+        keys = list(self.spec.keys())
+        data = dict(zip(keys, get_all_items(*keys)(data)))
+
+        result = {}
+        for k, funcs in self.spec.items():
+            for func in funcs:
+                result[k, func.__name__] = func(data[k])
+
+        return result
+
+
 class reductionby(object):
     """Like :func:`flowly.tz.reduction` but on a group basis.
 
@@ -546,6 +597,9 @@ def kv_transform(transform):
             split_every=transform.split_every,
         )
 
+    elif isinstance(transform, aggregate):
+        return kv_aggregateby(transform.spec, aggregate.split_every)
+
     elif isinstance(transform, toolz.curry) and (transform.func is toolz.mapcat):
         return chained(
             toolz.curried.map(lambda item: [
@@ -617,7 +671,7 @@ class kv_reduceby(object):
 
 
 class kv_reductionby(object):
-    """Reduction for key value pairs, only values are seend by the reducer.
+    """Reduction for key value pairs, only values are seen by the reducer.
 
     In contrast to :func:`flowly.tz.reductionby`, the data should be a list of
     key-value pairs. The groups are formed by the key part of each item and the
@@ -656,6 +710,29 @@ class kv_reductionby(object):
 
 
 collect = kv_reductionby(list)
+
+
+class kv_aggregateby(kv_reductionby):
+    """Aggregate for key value pairs, only values are seen by the reducer.
+
+    Usage::
+
+        >>> pipe(
+        ...    [(0, {'v': 1}), (1, {'v': 2}), (0, {'v': 3}),
+        ...     (1, {'v': 4}), (0, {'v': 5})],
+        ...    kv_aggregateby({'v': [min, max, sum]}),
+        ... )
+        [(0, {('v', 'max'): 5, ('v', 'min'): 1, ('v', 'sum'): 9}), \
+         (1, {('v', 'max'): 4, ('v', 'min'): 2, ('v', 'sum'): 6})]
+
+    """
+    def __init__(self, spec, split_every=None):
+        self.agg = aggregate(spec)
+        super(kv_aggregateby, self).__init__(
+            perpartition=self.agg.perpartition,
+            aggregate=self.agg.aggregate,
+            split_every=split_every,
+        )
 
 
 def get_all_optional_items(*keys):

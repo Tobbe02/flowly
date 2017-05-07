@@ -8,6 +8,7 @@ import pytest
 from flowly.hashing import functional_hash
 from flowly.tz import (
     pipe,
+    aggregate,
     apply_concat,
     apply_map_concat,
     build_dict,
@@ -17,10 +18,12 @@ from flowly.tz import (
     get_all_items,
     get_all_optional_items,
     itemsetter,
+    kv_aggregateby,
     kv_keymap,
     kv_reduceby,
     kv_reductionby,
     kv_valmap,
+    kv_transform,
     optional,
     printf,
     raise_,
@@ -214,6 +217,32 @@ def test_kv_reductionby__with_perpartition():
     assert actual == expected
 
 
+def test_kv_aggregateby__no_perpartition():
+    actual = pipe(
+        [(0, {'v': 1}), (1, {'v': 2}), (0, {'v': 3}), (1, {'v': 4}), (0, {'v': 5})],
+        kv_aggregateby({'v': [min, max, sum]}),
+    )
+    expected = [
+        (0, {('v', 'max'): 5, ('v', 'min'): 1, ('v', 'sum'): 9}),
+        (1, {('v', 'max'): 4, ('v', 'min'): 2, ('v', 'sum'): 6}),
+    ]
+
+    assert actual == expected
+
+
+def test_kv_transform__aggregate():
+    actual = pipe(
+        [(0, {'v': 1}), (1, {'v': 2}), (0, {'v': 3}), (1, {'v': 4}), (0, {'v': 5})],
+        kv_transform(aggregate({'v': [min, max, sum]})),
+    )
+    expected = [
+        (0, {('v', 'max'): 5, ('v', 'min'): 1, ('v', 'sum'): 9}),
+        (1, {('v', 'max'): 4, ('v', 'min'): 2, ('v', 'sum'): 6}),
+    ]
+
+    assert actual == expected
+
+
 def test_reductionby__no_perpartition():
     seq = [1, 2, 3, 4, 5, 6, 7]
     transform = reductionby(lambda x: x % 2, None, sum)
@@ -258,6 +287,16 @@ def test_reduction__no_perpartition():
     # compute the mean
     transform = reduction(None, lambda s: sum(s) / max(1, len(s)))
     assert transform([1, 2, 3, 4, 5, 6, 7, 8, 9]) == 5.0
+
+
+def test_aggregate__no_perpartion():
+    actual = pipe(
+        [{'value': 1}, {'value': 2}, {'value': 3}],
+        aggregate({'value': [sum, min, max]}),
+    )
+    expected = {('value', 'min'): 1, ('value', 'sum'): 6, ('value', 'max'): 3}
+
+    assert actual == expected
 
 
 def test_seq():
